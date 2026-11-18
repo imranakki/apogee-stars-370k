@@ -10,7 +10,7 @@ Télécharge le spectre aspcapStar de chaque étoile de `catalog.csv` et le rang
 | `err.npy` | (N, 8575) float32 | erreur par pixel |
 | `status.npy` | (N,) int8 | 0 à faire, 1 téléchargé, 2 absent du serveur |
 
-Vitesse mesurée : environ 19 spectres par seconde avec 24 workers, soit 1 h 30 pour 100 000 étoiles.
+Vitesse mesurée : environ 15 spectres par seconde avec 24 workers sur `data.sdss.org`, soit 4 h 30 pour 240 000 étoiles. Le miroir `dr17.sdss.org` donne environ 6 spectres par seconde avec 8 workers.
 
 Les fichiers FITS ne sont pas gardés sur disque : le script lit le flux et l'erreur en mémoire, puis les écrit à la bonne ligne. Pour 370 000 étoiles, comptez 12,7 Go par tableau. Sur un disque exFAT, la création des deux tableaux écrit d'abord 25 Go de zéros : exFAT ne gère pas les fichiers creux.
 
@@ -31,7 +31,15 @@ python scripts/03_download_spectra.py --seed-from /chemin/vers/apogee-stars-full
 
 ## Réutiliser une autre version
 
-`--seed-from` lit `catalog.csv`, `status.npy`, `flux.npy` et `err.npy` d'un autre dossier. Chaque étoile reconnue par le triplet (APOGEE_ID, TELESCOPE, FIELD) et marquée OK là-bas est copiée ici, puis marquée OK. La version 370 000 étoiles récupère ainsi environ 80 000 spectres de la version 100 000 en 7 minutes, au lieu de 70 minutes de téléchargement. Relancer avec la même option ne recopie rien : seules les lignes encore à l'état 0 sont visées.
+`--seed-from` lit `catalog.csv`, `status.npy`, `flux.npy` et `err.npy` d'un autre dossier. Chaque étoile reconnue par le triplet (APOGEE_ID, TELESCOPE, FIELD) et marquée OK là-bas est copiée ici, puis marquée OK. La version 370 000 étoiles récupère ainsi les 99 773 spectres de la version 100 000 en quelques minutes, au lieu de 1 h 30 de téléchargement. Relancer avec la même option ne recopie rien : seules les lignes encore à l'état 0 sont visées.
+
+## Changer de serveur
+
+La variable `STARS_SAS` choisit le serveur. Par défaut, le script lit `https://data.sdss.org`. Pendant la version 370 000 étoiles, ce serveur a cessé de répondre après 240 000 spectres. Le miroir officiel a servi les 30 315 derniers :
+
+```bash
+STARS_SAS=https://dr17.sdss.org python scripts/03_download_spectra.py --workers 8
+```
 
 ## Reprise
 

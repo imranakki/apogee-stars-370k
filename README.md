@@ -1,6 +1,6 @@
 # Classification d'étoiles APOGEE DR17 : version 370 000 étoiles
 
-Cette version reprend [apogee-stars-full](https://github.com/imranakki/apogee-stars-full) (100 000 étoiles) sur 370 085 étoiles : 246 572 bons spectres et 123 513 mauvais. Même catalogue `allStar`, mêmes étiquettes, mêmes modèles.
+Cette version reprend [apogee-stars-full](https://github.com/imranakki/apogee-stars-full) (100 000 étoiles) sur 370 000 étoiles : 246 572 bons spectres et 123 428 mauvais. 85 des 370 085 étoiles demandées n'ont pas de spectre disponible. Même catalogue `allStar`, mêmes étiquettes, mêmes modèles.
 
 Le volume impose quatre changements de code, décrits dans `docs/memoire.md` :
 
@@ -9,7 +9,29 @@ Le volume impose quatre changements de code, décrits dans `docs/memoire.md` :
 3. La PCA s'ajuste sur 50 000 spectres tirés au hasard, puis projette tout l'échantillon par morceaux.
 4. HDBSCAN tourne sur un sous-échantillon de 50 000 étoiles.
 
-`03_download_spectra.py --seed-from` copie les spectres déjà téléchargés par une autre version au lieu de les retélécharger.
+`03_download_spectra.py --seed-from` copie les spectres déjà téléchargés par une autre version au lieu de les retélécharger. Si `data.sdss.org` ne répond plus, `STARS_SAS=https://dr17.sdss.org` bascule sur le miroir officiel.
+
+## Résultats
+
+Sur `test_good` (37 034 bons spectres), entraînement sur les bons spectres :
+
+| Mesure | 30 781 | 99 773 | 370 000 |
+|---|---|---|---|
+| Macro F1, CNN | 0,818 | 0,834 | 0,848 |
+| Macro F1, forêt | 0,696 | 0,751 | 0,776 |
+| Erreur Teff, CNN (K) | 44,6 | 32,9 | 24,7 |
+| Erreur log g, CNN (dex) | 0,083 | 0,069 | 0,050 |
+| Rappel du red clump, CNN | 56 % | 60 % | 58 % |
+| ARI, GMM, k = 3 | 0,42 | 0,42 | 0,41 |
+| ARI, GMM, k = 4 | 0,09 | 0,44 | 0,10 |
+
+- Plus de données améliore surtout la régression.
+- Le red clump reste confondu avec la RGB à 42 %.
+- Le GMM à 3 groupes tient. Le score de 0,44 à 4 groupes de la version 100 000 ne se reproduit pas.
+- Entraîner sur tous les spectres améliore le macro F1 du CNN (0,857) mais double l'erreur sur Teff (45,1 K).
+- L'expérience complète prend 2 heures sur une RTX 3060 portable.
+
+Tableaux dans `results/`, rapport dans `report/rapport.pdf`.
 
 Les résultats des versions 30 000 et 100 000 étoiles restent dans leurs dépôts.
 
@@ -27,7 +49,7 @@ Le projet suit les trois demandes de l'équipe du cours :
 pip install -r requirements.txt
 ```
 
-Les données prennent environ 40 Go pour 370 000 étoiles. Choisissez un disque avec assez de place :
+Les données prennent environ 45 Go pour 370 000 étoiles. Choisissez un disque avec assez de place :
 
 ```bash
 export STARS_DATA=/media/imranakki/Seagate/01_Projects/apogee-stars-370k-data

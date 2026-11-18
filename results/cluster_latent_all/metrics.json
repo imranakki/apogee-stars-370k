@@ -1,0 +1,46 @@
+{
+  "features": "latent",
+  "ae_run": "autoencoder_none_all",
+  "subset": "all",
+  "n_dims": 10,
+  "k_min": 2,
+  "k_max": 12,
+  "k": 2,
+  "seeds": 10,
+  "min_cluster_size": 100,
+  "hdbscan_n": 50000,
+  "n_stars": 370000,
+  "kmeans": {
+    "ari_class": -0.056572885877758196,
+    "nmi_class": 0.10554714017478568,
+    "ari_population": 0.10389625011601579,
+    "nmi_population": 0.06113798156140077,
+    "occam_purity": 0.989099599136602,
+    "occam_clusters_used": 36,
+    "n_scored": 370000,
+    "n_clusters": 2,
+    "noise_frac": 0.0
+  },
+  "gmm": {
+    "ari_class": -0.02257694224723556,
+    "nmi_class": 0.02649248371723132,
+    "ari_population": 0.03845002030659157,
+    "nmi_population": 0.04575526893031952,
+    "occam_purity": 0.9044889504990815,
+    "occam_clusters_used": 36,
+    "n_scored": 370000,
+    "n_clusters": 2,
+    "noise_frac": 0.0
+  },
+  "hdbscan": {
+    "ari_class": 0.005563746719861934,
+    "nmi_class": 0.028218526810116853,
+    "ari_population": -0.003840194074338521,
+    "nmi_population": 0.05535261769872693,
+    "occam_purity": 0.041666666666666664,
+    "occam_clusters_used": 2,
+    "n_scored": 50000,
+    "n_clusters": 2,
+    "noise_frac": 0.9595
+  }
+}

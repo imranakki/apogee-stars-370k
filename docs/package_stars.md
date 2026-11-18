@@ -7,7 +7,7 @@ Code partagé par les scripts. Un script contient l'enchaînement d'une étape, 
 | `config.py` | chemins, adresses SDSS, seuils de qualité, listes de classes, graine |
 | `catalog.py` | lecture des FITS, coupes de qualité, classes, populations, split, lecture de `catalog.csv` |
 | `download.py` | téléchargement avec reprise, lecture d'un spectre aspcapStar en mémoire |
-| `spectra.py` | prétraitement, cache `features.npz`, `load_dataset()`, grille de longueurs d'onde |
+| `spectra.py` | prétraitement, cache `features_X.npy` et `features.npz`, `load_dataset()`, grille de longueurs d'onde |
 | `tasks.py` | lignes et cibles des tâches supervisées, masques train/val/test, métriques |
 | `models.py` | `SpectrumCNN` et `Autoencoder` (PyTorch) |
 | `training.py` | `Checkpointer` (sauvegarde et reprise), boucle d'époque, prédiction par lots |
@@ -43,4 +43,4 @@ Pensez à définir `STARS_DATA` avant de lancer Python.
 | prétraitement | `spectra.MAX_ERR`, `spectra.FLUX_CLIP` |
 | architecture du CNN | `models.SpectrumCNN` |
 
-Après un changement dans `catalog.py`, relancez à partir de l'étape 02 avec `--force`. Après un changement dans `spectra.py`, supprimez `features.npz`.
+Après un changement dans `catalog.py`, relancez à partir de l'étape 02 avec `--force`. Après un changement dans `spectra.py`, supprimez `features.npz` et `features_X.npy`.

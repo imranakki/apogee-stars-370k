@@ -20,14 +20,14 @@ Un algorithme regroupe-t-il des étoiles en classes physiques à partir de leur 
 | `10_label_source.py` | erreurs par origine d'étiquette | `label_source.csv` | [10](10_label_source.md) |
 | `run_quality_experiment.sh` | lance l'expérience qualité complète | tous les runs | [qualité](experience_qualite.md) |
 
-Les définitions de qualité, d'étiquettes et de split sont dans [donnees.md](donnees.md). Le code partagé est décrit dans [package_stars.md](package_stars.md).
+Les définitions de qualité, d'étiquettes et de split sont dans [donnees.md](donnees.md). Le code partagé est décrit dans [package_stars.md](package_stars.md). Les choix qui font tenir 370 000 spectres dans 15 Go de RAM sont dans [memoire.md](memoire.md).
 
 ## Flux des données
 
 ```
 allStar + RC + OCCAM ──────> 02 ──> catalog.csv ──> 03 ──> flux.npy / err.npy
                                                               │
-                                     features.npz (prétraité, créé au premier usage)
+                                     features_X.npy (prétraité, créé au premier usage)
                                                               │
                          ┌────────────┬──────────────┬────────┴─────────┐
                          04 (PCA)     05 (RF)        06 (CNN, AE)        
@@ -49,7 +49,8 @@ STARS_DATA/
   catalog.csv                          échantillon choisi, une ligne par étoile
   flux.npy, err.npy                    spectres bruts, même ordre que catalog.csv
   status.npy                           état du téléchargement de chaque étoile
-  features.npz                         spectres prétraités
+  features_X.npy                       spectres prétraités, float16 (5,6 Go)
+  features.npz                         lignes gardées, pixels gardés, fraction de pixels douteux
   pca.npz                              projection PCA
   runs/                                un dossier par modèle ou clustering
   figures/                             toutes les figures

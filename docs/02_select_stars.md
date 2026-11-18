@@ -23,8 +23,8 @@ python scripts/02_select_stars.py --n-good 30000 --n-bad 15000
 
 | Option | Défaut | Effet |
 |---|---|---|
-| `--n-good` | 66000 | étoiles de bonne qualité tirées au hasard |
-| `--n-bad` | 33000 | étoiles de mauvaise qualité tirées au hasard |
+| `--n-good` | 246200 | étoiles de bonne qualité tirées au hasard |
+| `--n-bad` | 123100 | étoiles de mauvaise qualité tirées au hasard |
 | `--no-occam` | non | ne pas ajouter d'office les membres d'amas ouverts |
 | `--force` | non | écraser un `catalog.csv` existant |
 
@@ -34,6 +34,6 @@ python scripts/02_select_stars.py --n-good 30000 --n-bad 15000
 
 ## Attention
 
-Les spectres de l'étape 03 sont rangés dans l'ordre de `catalog.csv`. Le script refuse donc d'écraser le catalogue sans `--force`. Après `--force`, supprimez `flux.npy`, `err.npy`, `status.npy` et `features.npz`, puis relancez l'étape 03.
+Les spectres de l'étape 03 sont rangés dans l'ordre de `catalog.csv`. Le script refuse donc d'écraser le catalogue sans `--force`. Après `--force`, supprimez `flux.npy`, `err.npy`, `status.npy`, `features.npz` et `features_X.npy`, puis relancez l'étape 03.
 
 Le tirage utilise la graine 42 (`config.SEED`). La même commande donne le même échantillon sur toutes les machines de l'équipe.

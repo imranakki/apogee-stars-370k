@@ -20,7 +20,7 @@
 \newcommand{\bignum}[1]{{\usebeamercolor[fg]{example text}\Huge\bfseries #1}}
 
 \title{Classer les étoiles par leur seul spectre}
-\subtitle{APOGEE DR17, version complète : catalogue allStar et 100\,000 étoiles}
+\subtitle{APOGEE DR17, version 370\,000 étoiles}
 \author{Félix Dubé \and Imran Akki \and Charles-Antoine Fournier \and Youssef Lahrichi \and Bastien Posez}
 \institute{GIF-4101 / GIF-7005 / GIF-7015 \quad Université Laval}
 \date{Décembre 2026}
@@ -35,36 +35,38 @@
 \end{center}
 \vspace{1em}
 \begin{itemize}
-  \item Garcia-Dias et al.\ (2018) : K-means sur APOGEE sépare ces classes, mais dépend de l'initialisation.
-  \item Version 1 : catalogue allégé, 30\,781 étoiles.
-  \item Version complète : catalogue \texttt{allStar} (4\,Go), \alert{99\,773 étoiles}, étiquettes plus riches.
+  \item Version 1 : 30\,781 étoiles. Version 2 : 99\,773 étoiles.
+  \item Version 3 : \alert{370\,000 étoiles}, même protocole.
+  \item Question de cette version : quels résultats tiennent quand l'échantillon grandit ?
 \end{itemize}
-\end{frame}
-
-\begin{frame}{Ce que le catalogue complet ajoute}
-\begin{columns}[T]
-\column{0.55\textwidth}
-\begin{itemize}
-  \item \textbf{FPARAM} : l'ajustement brut, publié même pour les étoiles rejetées. 2\,815 mauvais spectres gagnent une étiquette.
-  \item \textbf{[Mg/Fe] et [Fe/H]} : disque mince et disque épais par la ligne de Weinberg et al.\ (2019).
-  \item \textbf{Distance Gaia} : le bulbe se définit par la distance au centre galactique ($< 3$\,kpc).
-\end{itemize}
-\column{0.4\textwidth}
-\bignum{12}\\ étoiles sans classe\\(802 en version 1)\\[0.8em]
-\alert{FPARAM n'est pas calibré} : \teff{} plus bas de 75\,K en médiane.
-\end{columns}
 \end{frame}
 
 \begin{frame}{Les données}
 \begin{columns}[T]
 \column{0.32\textwidth}
-\bignum{66\,372}\\ bons spectres\\[0.8em]
-{\usebeamercolor[fg]{alerted text}\Huge\bfseries 33\,401}\\ mauvais spectres\\[0.8em]
-\small 69\,\% des mauvais ont un SNR $\geq 70$ : un drapeau les écarte, pas le bruit.
+\bignum{246\,572}\\ bons spectres\\[0.8em]
+{\usebeamercolor[fg]{alerted text}\Huge\bfseries 123\,428}\\ mauvais spectres\\[0.8em]
+\small 99\,773 spectres repris de la version 2. 270\,312 téléchargés, dont 30\,315 depuis le miroir \texttt{dr17.sdss.org}.
 \column{0.66\textwidth}
 \includegraphics[width=\linewidth]{mean_spectra_zoom.png}\\
-\small Spectre moyen par classe sur 100\,Å.
+\small Spectre moyen par classe sur 130\,Å.
 \end{columns}
+\end{frame}
+
+\begin{frame}{Tenir dans 15\,Go de mémoire}
+\centering
+\begin{tabular}{lrr}
+\toprule
+Changement & Avant & Après \\
+\midrule
+Spectres en float16 & 11,1\,Go & 5,6\,Go \\
+Lots lus à la volée & copie de 3,9\,Go & un lot \\
+PCA sur 50\,000 spectres & 11\,Go & 1,5\,Go \\
+HDBSCAN sur 50\,000 étoiles & 370\,000 & 50\,000 \\
+\bottomrule
+\end{tabular}\\[1.2em]
+\raggedright
+Float16 : pas de 0,0005 près du continuum, vingt fois moins que le bruit d'un bon spectre.
 \end{frame}
 
 \begin{frame}{Méthode}
@@ -85,7 +87,7 @@
   \item 4 classes, ou \teff, $\log g$, [M/H]
 \end{enumerate}
 \vspace{0.5em}
-Chaque modèle s'entraîne sur les bons spectres, puis sur tous.
+Chaque modèle s'entraîne sur les bons spectres (172\,512), puis sur tous (258\,997).
 \end{columns}
 \end{frame}
 
@@ -95,34 +97,33 @@ Chaque modèle s'entraîne sur les bons spectres, puis sur tous.
 \small t-SNE de 10\,000 étoiles. Le red clump reste mêlé à la RGB.
 \end{frame}
 
-\begin{frame}{Le GMM retrouve les classes évolutives}
+\begin{frame}{Le GMM à trois groupes tient}
 \begin{columns}[c]
 \column{0.5\textwidth}
 \includegraphics[width=\linewidth]{kiel_gmm.png}
 \column{0.46\textwidth}
-\bignum{19\,800 / 19\,804}\\ naines dans le groupe A\\[0.8em]
-\bignum{97\,\%}\\ du red clump dans le groupe C\\[0.8em]
-ARI 0,42 à $k = 3$, \textbf{0,44 à $k = 4$}\\
-Populations : ARI $\leq 0{,}13$
+\bignum{73\,024 / 73\,040}\\ naines dans le groupe A\\[0.8em]
+ARI 0,41 à $k = 3$ (0,42 en v2)\\[0.5em]
+\alert{ARI 0,10 à $k = 4$} (0,44 en v2) : le quatrième groupe coupe les naines en deux.
 \end{columns}
 \end{frame}
 
-\begin{frame}{Supervisé : le CNN lit les raies}
+\begin{frame}{Supervisé : le CNN bat la forêt partout}
 \centering
 \begin{tabular}{llrrrr}
 \toprule
 \texttt{test\_good} & Entraînement & Macro F1 & \teff{} (K) & $\log g$ (dex) & [M/H] (dex) \\
 \midrule
-Forêt & bons & 0,75 & 30,0 & 0,131 & 0,047 \\
-Forêt & tous & 0,78 & \textbf{28,1} & 0,108 & 0,042 \\
-CNN & bons & 0,83 & 32,9 & \textbf{0,069} & \textbf{0,025} \\
-CNN & tous & \textbf{0,86} & 53,7 & 0,102 & 0,030 \\
+Forêt & bons & 0,78 & 26,3 & 0,106 & 0,040 \\
+Forêt & tous & 0,79 & 25,2 & 0,093 & 0,037 \\
+CNN & bons & 0,85 & \textbf{24,7} & \textbf{0,050} & \textbf{0,021} \\
+CNN & tous & \textbf{0,86} & 45,1 & 0,081 & 0,026 \\
 \bottomrule
 \end{tabular}\\[1.2em]
 \raggedright
 \begin{itemize}
-  \item Le CNN divise par deux l'erreur sur $\log g$ et [M/H].
-  \item Red clump : 60\,\% de rappel, 40\,\% classé RGB.
+  \item 37\,034 bons spectres de test.
+  \item Red clump : 58\,\% de rappel, 42\,\% classé RGB.
 \end{itemize}
 \end{frame}
 
@@ -135,33 +136,34 @@ CNN & tous & \textbf{0,86} & 53,7 & 0,102 & 0,030 \\
 \toprule
 SNR & F1 bons & F1 tous \\
 \midrule
-5 à 30 & 0,42 & \textbf{0,52} \\
-30 à 70 & 0,71 & \textbf{0,76} \\
-70 à 150 & 0,78 & \textbf{0,81} \\
-$> 150$ & 0,84 & \textbf{0,87} \\
+5 à 30 & 0,45 & \textbf{0,54} \\
+30 à 70 & 0,68 & \textbf{0,76} \\
+70 à 150 & 0,80 & \textbf{0,82} \\
+$> 150$ & 0,85 & \textbf{0,86} \\
 \bottomrule
 \end{tabular}
 \column{0.46\textwidth}
-\textbf{Régression} : sur les bons spectres, \teff{} passe de 33 à \alert{54\,K}.\\[0.8em]
-Cause : les étiquettes des mauvais spectres. Sur les 417 étoiles FPARAM, l'erreur atteint \alert{874\,K}.
+\textbf{Régression} : sur les bons spectres, \teff{} passe de 25 à \alert{45\,K}.\\[0.8em]
+Cause : les étiquettes des mauvais spectres. Sur les 1\,504 étoiles FPARAM, l'erreur atteint \alert{882\,K}.
 \end{columns}
 \end{frame}
 
-\begin{frame}{30\,000 contre 100\,000 étoiles}
+\begin{frame}{30\,000, 100\,000, 370\,000 étoiles}
 \centering
-\begin{tabular}{lrr}
+\begin{tabular}{lrrr}
 \toprule
-Mesure (\texttt{test\_good}) & 30\,781 & 99\,773 \\
+Mesure (\texttt{test\_good}) & 30\,781 & 99\,773 & 370\,000 \\
 \midrule
-Macro F1, CNN & 0,818 & 0,834 \\
-Macro F1, forêt & 0,696 & 0,751 \\
-Erreur \teff{}, CNN (K) & 44,6 & 32,9 \\
-Erreur $\log g$, CNN (dex) & 0,083 & 0,069 \\
-ARI, GMM, $k = 4$ & 0,09 & 0,44 \\
+Macro F1, CNN & 0,818 & 0,834 & \textbf{0,848} \\
+Macro F1, forêt & 0,696 & 0,751 & \textbf{0,776} \\
+Erreur \teff{}, CNN (K) & 44,6 & 32,9 & \textbf{24,7} \\
+Erreur $\log g$, CNN (dex) & 0,083 & 0,069 & \textbf{0,050} \\
+Rappel red clump & 56\,\% & 60\,\% & 58\,\% \\
+ARI, GMM, $k = 3$ & 0,42 & 0,42 & 0,41 \\
 \bottomrule
 \end{tabular}\\[1em]
 \raggedright
-Plus de données aide le supervisé. La limite red clump / RGB demeure.
+La régression gagne le plus. La limite red clump / RGB demeure.
 \end{frame}
 
 \begin{frame}{Temps de calcul}
@@ -170,12 +172,12 @@ Plus de données aide le supervisé. La limite red clump / RGB demeure.
 \toprule
 Étape & Temps \\
 \midrule
-Téléchargement des 99\,785 spectres & 87 min (une fois) \\
-CNN, 30 époques & 4 à 5,5 min \\
-Forêt aléatoire & 0,5 à 2 min \\
-Clustering & 1 à 2,5 min \\
+Téléchargement de 270\,312 spectres & environ 6\,h (une fois) \\
+CNN, 30 époques & 14 à 20 min \\
+Forêt aléatoire & 1,5 à 8 min \\
+Clustering & 2 à 3 min \\
 \midrule
-\textbf{Expérience complète} & \textbf{40 min} \\
+\textbf{Expérience complète} & \textbf{2\,h} \\
 \bottomrule
 \end{tabular}\\[1em]
 RTX 3060 portable (6 Go), 16 threads, 15 Go de RAM.
@@ -188,13 +190,13 @@ RTX 3060 portable (6 Go), 16 threads, 15 Go de RAM.
 \begin{itemize}
   \item Étiquettes ASPCAP.
   \item Une seule graine par modèle.
-  \item Distances du bulbe incertaines.
+  \item PCA et HDBSCAN sur 50\,000 étoiles.
 \end{itemize}
 \column{0.48\textwidth}
 \textbf{Suite}
 \begin{enumerate}
   \item Régression sur tous les spectres, étiquettes ASPCAP seulement.
-  \item 5 graines par modèle.
+  \item GMM à $k = 4$ avec plusieurs graines.
   \item Red clump / RGB par astérosismologie.
 \end{enumerate}
 \end{columns}
@@ -203,12 +205,12 @@ RTX 3060 portable (6 Go), 16 threads, 15 Go de RAM.
 \begin{frame}{À retenir}
 \begin{enumerate}
   \setlength{\itemsep}{1em}
-  \item \textbf{Le spectre seul sépare naines et géantes, sans étiquettes} (GMM, ARI 0,44).
-  \item \textbf{Avec étiquettes, le CNN atteint un macro F1 de 0,86.}
-  \item \textbf{Les mauvais spectres aident à classer, mais leurs étiquettes bruitées nuisent à la régression.}
+  \item \textbf{Le spectre seul sépare naines et géantes, sans étiquettes} (GMM, ARI 0,41).
+  \item \textbf{Avec étiquettes, le CNN atteint un macro F1 de 0,86 et 24,7\,K d'erreur sur \teff{}.}
+  \item \textbf{Plus de données améliore la régression, pas la limite red clump / RGB.}
 \end{enumerate}
 \vspace{1.5em}
-\small Code : \url{github.com/imranakki/apogee-stars-full}
+\small Code : \url{github.com/imranakki/apogee-stars-370k}
 \end{frame}
 
 \begin{frame}[standout]

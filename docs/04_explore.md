@@ -4,7 +4,7 @@
 
 Première réponse à la question du superviseur : les classes se séparent-elles dans les spectres ? Le script projette les spectres en 2D sans étiquettes, puis colore les points avec les étiquettes du catalogue.
 
-Au premier lancement, il prétraite les spectres et crée `features.npz` (voir [donnees.md](donnees.md)).
+Au premier lancement, il prétraite les spectres et crée `features_X.npy` et `features.npz` (voir [donnees.md](donnees.md)).
 
 ## Étapes
 

@@ -19,7 +19,8 @@ FEATURES = DATA / "features.npz"
 FEATURES_X = DATA / "features_X.npy"
 PCA_FILE = DATA / "pca.npz"
 
-SAS = "https://data.sdss.org/sas/dr17/apogee"
+# STARS_SAS choisit un miroir, par exemple https://dr17.sdss.org, si data.sdss.org ne répond plus.
+SAS = os.environ.get("STARS_SAS", "https://data.sdss.org") + "/sas/dr17/apogee"
 ASPCAP_DIR = f"{SAS}/spectro/aspcap/dr17/synspec_rev1"
 URLS = {
     ALLSTAR: f"{ASPCAP_DIR}/allStar-dr17-synspec_rev1.fits",
