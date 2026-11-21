@@ -1,0 +1,45 @@
+{
+  "cluster": {
+    "dims": 10,
+    "k": 3,
+    "seed": 4,
+    "ari": 0.4307179341522995,
+    "nmi": 0.5294258001783971,
+    "ari_median_10_seeds": 0.40865498996345573,
+    "why": "k = 3 : silhouette maximale. Graine : BIC minimale parmi 10, sans regarder les étiquettes."
+  },
+  "class": {
+    "cnn": {
+      "snr": 70.0,
+      "badfrac": 0.5,
+      "lr": 0.001
+    },
+    "cnn_why": {
+      "snr": "perte de validation minimale (0.1640) parmi [30, 50, 70, 100, 150]",
+      "badfrac": "perte de validation minimale (0.1605) parmi [0.0, 0.25, 0.5, 1.0]",
+      "lr": "perte de validation minimale (0.1616) parmi [0.0001, 0.0003, 0.001, 0.003]"
+    },
+    "rf": {
+      "rf_pca": 10,
+      "rf_trees": 300
+    },
+    "rf_why": "meilleur score de validation (macro F1 0.8042) parmi 10, 20, 50 composantes et 300, 500 arbres"
+  },
+  "regress": {
+    "cnn": {
+      "snr": 50.0,
+      "badfrac": 0.0,
+      "lr": 0.001
+    },
+    "cnn_why": {
+      "snr": "perte de validation minimale (0.0048) parmi [30, 50, 70, 100, 150]",
+      "badfrac": "perte de validation minimale (0.0053) parmi [0.0, 0.25, 0.5, 1.0]",
+      "lr": "non testé pour cette tâche : valeur de référence"
+    },
+    "rf": {
+      "rf_pca": 10,
+      "rf_trees": 500
+    },
+    "rf_why": "meilleur score de validation (erreur standardisée (signe inversé) -0.0684) parmi 10, 20, 50 composantes et 300, 500 arbres"
+  }
+}

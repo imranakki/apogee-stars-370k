@@ -32,7 +32,7 @@
 \maketitle
 
 \begin{abstract}
-\noindent Nous reprenons notre étude de classification d'étoiles APOGEE DR17 sur 370\,000 spectres, 3,7 fois plus que la version précédente (99\,773) et 12 fois plus que la première (30\,781). Le protocole ne change pas. Le code change pour tenir dans 15\,Go de mémoire : spectres stockés en float16, lots lus à la volée, PCA ajustée sur un sous-échantillon. Avec étiquettes, le CNN 1-D entraîné sur les bons spectres atteint un macro F1 de 0,848 et une erreur de 24,7\,K sur \teff{}, contre 0,834 et 32,9\,K à 100\,000 étoiles. Entraîné sur tous les spectres, il atteint un macro F1 de 0,857. Sans étiquettes, un mélange gaussien à trois groupes retrouve les classes évolutives avec un ARI de 0,41, comme avant. À quatre groupes, l'ARI tombe à 0,10 : le gain observé à 100\,000 étoiles ne se confirme pas. Les mauvais spectres aident toujours la classification et dégradent toujours la régression sur les bons spectres (\teff{} de 25 à 45\,K). La limite red clump / RGB demeure : 58\,\% de rappel pour le red clump.
+\noindent Nous reprenons notre étude de classification d'étoiles APOGEE DR17 sur 370\,000 spectres, 3,7 fois plus que la version précédente (99\,773) et 12 fois plus que la première (30\,781). Le protocole ne change pas. Le code change pour tenir dans 15\,Go de mémoire : spectres stockés en float16, lots lus à la volée, PCA ajustée sur un sous-échantillon. Avec étiquettes, le CNN 1-D entraîné sur les bons spectres atteint un macro F1 de 0,848 et une erreur de 24,7\,K sur \teff{}, contre 0,834 et 32,9\,K à 100\,000 étoiles. Entraîné sur tous les spectres, il atteint un macro F1 de 0,857. Sans étiquettes, un mélange gaussien à trois groupes retrouve les classes évolutives avec un ARI de 0,41, comme avant. À quatre groupes, l'ARI tombe à 0,10 : le gain observé à 100\,000 étoiles ne se confirme pas. Les mauvais spectres aident toujours la classification et dégradent toujours la régression sur les bons spectres (\teff{} de 25 à 45\,K). La limite red clump / RGB demeure : 58\,\% de rappel pour le red clump. Des tests de sensibilité justifient chaque paramètre. Choisis sur la validation, les meilleurs réglages portent le macro F1 du CNN à $0{,}865 \pm 0{,}000$ sur 3 graines, contre $0{,}852 \pm 0{,}010$ pour la référence, et celui de la forêt de 0,776 à 0,803.
 \end{abstract}
 
 \tableofcontents
@@ -337,13 +337,132 @@ Total de l'expérience & \multicolumn{2}{c}{7\,206 (2 heures)} \\
 L'expérience prend 2 heures, contre 40 minutes à 100\,000 étoiles : 3 fois plus long pour 3,7 fois plus d'étoiles. Le CNN domine le temps de calcul.
 
 %=====================================================================
+\section{Choix des paramètres et tests de sensibilité}
+\label{sec:sensibilite}
+
+Chaque nombre du projet a une raison. Le fichier \texttt{docs/choix\_parametres.md} les liste toutes. Le tableau~\ref{tab:raisons} reprend les principales. Nous mesurons ensuite l'effet de chaque valeur : un paramètre change à la fois, tout le reste garde sa valeur de référence (\texttt{scripts/11\_sensitivity.py}). Les scores portent sur \texttt{test\_good}.
+
+\begin{table}[H]
+\centering\footnotesize
+\begin{tabular}{llp{8cm}}
+\toprule
+Paramètre & Valeur & Raison \\
+\midrule
+SNR d'un bon spectre & 70 & seuil courant des études ASPCAP, APOGEE vise 100 \\
+Découpage & 70 / 15 / 15 & 37\,034 bons spectres de test, écart type de l'accuracy sous 0,002 \\
+Validation & bons spectres & chaque run choisit son époque sur le même jeu propre \\
+Seuils de $\log g$ & 4,0 et 3,5 & définitions physiques, non optimisées \\
+PCA du clustering & 10 axes & 74,7\,\% de la variance, 77,0\,\% à 20 axes \\
+$k$ & 3 & silhouette maximale \\
+CNN & noyau 7, 3 blocs & un noyau couvre une raie, 7\,514 pixels ramenés à 117 \\
+Époques & 30 & la meilleure époque de validation est gardée \\
+Taux d'apprentissage & 0,001 & valeur par défaut d'Adam \\
+Forêt & 300 arbres, 50 axes & le gain s'arrête vers quelques centaines d'arbres \\
+\bottomrule
+\end{tabular}
+\caption{Valeurs de référence et leur raison.}
+\label{tab:raisons}
+\end{table}
+
+\subsection{Données}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{sens_data.png}
+\caption{Effet des données. En haut, macro F1 du CNN. En bas, erreur sur \teff{}. Pointillé gris : valeur de référence.}
+\label{fig:sens_data}
+\end{figure}
+
+\paragraph{Seuil de SNR.} Pour la classification, 70 donne le meilleur macro F1 (0,866). À 150, l'entraînement perd 42\,\% de ses spectres et le macro F1 tombe à 0,858. Pour la régression, un seuil plus bas aide : 26,5\,K à 30 et 26,6\,K à 50, contre 28,3\,K à 70. Sous 70, le seuil ajoute peu d'étoiles (4\,585 à 50), car l'échantillon tire 2 bons spectres pour 1 mauvais.
+
+\paragraph{Part de mauvais spectres.} Ajouter 25\,\% des mauvais spectres fait gagner 0,006 de macro F1 sur \texttt{test\_good} et 0,015 sur \texttt{test\_all}. Au-delà, le gain s'arrête. En régression, les mauvais spectres aident les spectres bruités (erreur sur \teff{} de 298 à 202\,K pour SNR < 70) et nuisent aux bons spectres (29 à 42\,K à 50\,\%).
+
+\paragraph{Taille d'entraînement.} Le CNN entraîné sur 2\,\% des bons spectres (3\,450) atteint déjà 0,785 de macro F1, plus que la forêt sur 100\,\% (0,776). L'erreur sur \teff{} descend de 54\,K à 27\,K entre 2 et 50\,\%, puis ne bouge plus.
+
+\subsection{Hyperparamètres}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{sens_hyper.png}
+\caption{Hyperparamètres. En haut, courbes du CNN sur 50 époques et taux d'apprentissage. En bas, forêt : arbres et composantes PCA (bleu : macro F1, vermillon : erreur sur \teff{}).}
+\label{fig:sens_hyper}
+\end{figure}
+
+\paragraph{Époques.} En classification, la perte de validation est minimale à l'époque 16 (0,163), puis remonte à 0,188 à l'époque 30 : le modèle surapprend. Garder la meilleure époque protège contre cet effet. En régression, la perte de validation baisse encore à l'époque 50. L'erreur sur \teff{} y vaut 25,0\,K, contre 35,3\,K à l'époque 30. Pour la régression, 30 époques sont trop courtes.
+
+\paragraph{Taux d'apprentissage.} 0,001 donne la plus faible perte de validation et le meilleur macro F1 (0,865). Les trois autres valeurs restent entre 0,858 et 0,862.
+
+\paragraph{Forêt.} Passer de 300 à 500 arbres gagne 0,003 de macro F1. Le nombre de composantes compte plus : 10 composantes donnent 0,803, contre 0,776 avec nos 50. Avec trop d'axes, chaque arbre tire surtout des axes de bruit.
+
+\subsection{Clustering}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{sens_cluster.png}
+\caption{Clustering. À gauche, ARI selon le nombre de composantes PCA. À droite, ARI sur 10 graines par $k$ (ligne : médiane, bande : minimum à maximum).}
+\label{fig:sens_cluster}
+\end{figure}
+
+Le GMM à $k = 3$ sur 10 composantes atteint l'ARI le plus haut (0,41). Le résultat dépend du nombre d'axes : 0,33 à 5 axes, $-0,03$ à 20, 0,40 à 30. Sur 10 graines, l'ARI médian vaut 0,41 à $k = 3$, avec un minimum de 0,08. À $k = 4$, la médiane tombe à 0,10 et le maximum atteint 0,30 : le 0,44 de la version 2 ne se reproduit avec aucune graine. K-means reste sous 0,09 en médiane jusqu'à $k = 7$.
+
+\subsection{Le bruit des graines}
+
+Le même CNN, relancé avec les graines 42, 43 et 44, donne un macro F1 de $0{,}852 \pm 0{,}010$ et une erreur sur \teff{} de $26{,}3 \pm 1{,}6$\,K. Un écart de 0,01 entre deux runs uniques ne prouve donc rien. La forêt, à graine fixe, donne le même résultat à chaque run. Pour cette raison, la comparaison finale entraîne chaque CNN avec 3 graines.
+
+\subsection{Meilleurs réglages}
+
+Nous choisissons les réglages sur la validation, jamais sur le test. Le test sert une seule fois, à la fin (\texttt{scripts/12\_best.py}).
+
+\begin{itemize}
+  \item CNN de classification : SNR 70, 50\,\% des mauvais spectres ajoutés, taux 0,001. Chaque valeur a la plus faible perte de validation de son test.
+  \item CNN de régression : SNR 50, aucun mauvais spectre, taux 0,001.
+  \item Forêt : 10 composantes, 300 arbres en classification et 500 en régression, au meilleur score de validation parmi 10, 20, 50 composantes et 300, 500 arbres.
+  \item Clustering : $k = 3$ par la silhouette, puis la graine du GMM de plus faible BIC parmi 10. Le choix n'utilise aucune étiquette. La graine 4 donne un ARI de 0,43.
+\end{itemize}
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{llrr}
+\toprule
+Modèle & Mesure & Référence & Meilleurs réglages \\
+\midrule
+CNN, 3 graines & macro F1, \texttt{test\_good} & $0{,}852 \pm 0{,}010$ & $\mathbf{0{,}865 \pm 0{,}000}$ \\
+ & macro F1, \texttt{test\_all} & $0{,}822 \pm 0{,}009$ & $\mathbf{0{,}847 \pm 0{,}001}$ \\
+ & macro F1, SNR < 70 & $0{,}642 \pm 0{,}023$ & $\mathbf{0{,}738 \pm 0{,}022}$ \\
+ & erreur \teff{} (K) & $26{,}3 \pm 1{,}6$ & $26{,}6 \pm 1{,}0$ \\
+ & erreur $\log g$ & $0{,}061 \pm 0{,}002$ & $\mathbf{0{,}055 \pm 0{,}004}$ \\
+ & erreur \mh{} & $0{,}023 \pm 0{,}003$ & $0{,}021 \pm 0{,}003$ \\
+\midrule
+Forêt & macro F1, \texttt{test\_good} & 0,776 & \textbf{0,803} \\
+ & macro F1, SNR < 70 & 0,614 & \textbf{0,683} \\
+ & erreur \teff{} (K) & 26,3 & 26,6 \\
+ & erreur $\log g$ & 0,106 & \textbf{0,085} \\
+ & erreur \mh{} & 0,040 & \textbf{0,035} \\
+\midrule
+GMM, $k = 3$ & ARI & 0,41 (graine 42) & 0,43 (graine 4) \\
+\bottomrule
+\end{tabular}
+\caption{Référence contre meilleurs réglages, sur le test. CNN : moyenne et écart type sur 3 graines.}
+\label{tab:best}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{sens_best.png}
+\caption{Référence (gris) contre meilleurs réglages (bleu). Barres d'erreur : écart type sur 3 graines.}
+\label{fig:sens_best}
+\end{figure}
+
+En classification, les meilleurs réglages gagnent 0,013 de macro F1 pour le CNN et 0,027 pour la forêt. Le gain le plus net porte sur les spectres de SNR < 70 : 0,738 contre 0,642 pour le CNN. L'écart entre graines tombe aussi de 0,010 à moins de 0,001. En régression, l'erreur sur \teff{} ne bouge pas (26,6 contre 26,3\,K, dans le bruit des graines). Le CNN gagne 10\,\% sur $\log g$ et la forêt 20\,\%.
+
+%=====================================================================
 \section{Discussion}
 
 \paragraph{Ce qui tient.} Trois résultats tiennent sur les trois versions : la séparation naines / géantes sans étiquette, la supériorité du CNN pour la classification, et l'effet opposé des mauvais spectres sur la classification et la régression.
 
 \paragraph{Ce qui plafonne.} Le red clump reste confondu avec la RGB à 42\,\%. La différence entre ces classes tient au cœur de l'étoile et laisse peu de traces dans le spectre de surface. Plus de données n'y change rien.
 
-\paragraph{Ce qui ne tient pas.} L'ARI de 0,44 du GMM à $k = 4$ en version 2 ne se reproduit pas. Avec 246\,572 bons spectres, le GMM coupe les naines en deux plutôt que de séparer le red clump. Le choix $k = 4$ reste fragile, et $k = 3$ reste le choix robuste.
+\paragraph{Ce qui ne tient pas.} L'ARI de 0,44 du GMM à $k = 4$ en version 2 ne se reproduit pas. Avec 246\,572 bons spectres, le GMM coupe les naines en deux plutôt que de séparer le red clump. Sur 10 graines, l'ARI à $k = 4$ ne dépasse pas 0,30. Le choix $k = 4$ reste fragile, et $k = 3$ reste le choix robuste.
 
 \paragraph{Les mauvais spectres.} La règle pratique de la version 2 tient : entraîner la régression sur les spectres bruités seulement avec des étiquettes fiables. Les étiquettes FPARAM donnent 882\,K d'erreur.
 
@@ -352,7 +471,8 @@ L'expérience prend 2 heures, contre 40 minutes à 100\,000 étoiles : 3 fois pl
 
 \begin{itemize}
   \item Les étiquettes viennent d'ASPCAP. Le CNN apprend à reproduire ASPCAP.
-  \item Chaque modèle s'entraîne avec une seule graine.
+  \item Hors de la section~\ref{sec:sensibilite}, chaque CNN s'entraîne avec une seule graine. Le bruit des graines vaut environ 0,01 de macro F1.
+  \item Le CNN de régression s'arrête à 30 époques, alors que sa perte de validation baisse encore à 50.
   \item La PCA s'ajuste sur 50\,000 spectres et HDBSCAN tourne sur 50\,000 étoiles.
   \item 85 étoiles demandées manquent.
 \end{itemize}
@@ -360,7 +480,7 @@ L'expérience prend 2 heures, contre 40 minutes à 100\,000 étoiles : 3 fois pl
 Travaux futurs, par ordre de priorité :
 \begin{enumerate}
   \item Entraîner la régression sur tous les spectres avec les étiquettes ASPCAP seulement.
-  \item Répéter le GMM à $k = 4$ avec plusieurs graines pour mesurer sa variabilité.
+  \item Entraîner le CNN de régression sur 50 époques ou plus.
   \item Répéter chaque entraînement avec 5 graines.
   \item Valider la séparation red clump / RGB par astérosismologie.
 \end{enumerate}
@@ -368,7 +488,7 @@ Travaux futurs, par ordre de priorité :
 %=====================================================================
 \section{Conclusion}
 
-Sur 370\,000 spectres APOGEE, le spectre seul sépare naines et géantes sans étiquette : un GMM à trois groupes atteint un ARI de 0,41 et place 73\,024 des 73\,040 naines dans un même groupe. Avec étiquettes, le CNN 1-D atteint un macro F1 de 0,857 et une erreur de 24,7\,K sur \teff{}. La régression gagne le plus à l'échantillon plus grand. La limite red clump / RGB et le bruit des étiquettes des mauvais spectres demeurent.
+Sur 370\,000 spectres APOGEE, le spectre seul sépare naines et géantes sans étiquette : un GMM à trois groupes atteint un ARI de 0,41 et place 73\,024 des 73\,040 naines dans un même groupe. Avec étiquettes, le CNN 1-D atteint un macro F1 de 0,857 et une erreur de 24,7\,K sur \teff{}. La régression gagne le plus à l'échantillon plus grand. Les tests de sensibilité justifient nos valeurs de référence, avec deux corrections : 10 composantes PCA pour la forêt au lieu de 50, et une part de mauvais spectres pour le CNN de classification. Ces réglages, choisis sur la validation, portent le macro F1 du CNN à 0,865 sur 3 graines. La limite red clump / RGB et le bruit des étiquettes des mauvais spectres demeurent.
 
 \section*{Reproductibilité}
 \addcontentsline{toc}{section}{Reproductibilité}
@@ -387,6 +507,11 @@ python scripts/04_explore.py
 bash scripts/run_quality_experiment.sh
 python scripts/10_label_source.py
 python report/make_figures.py
+# tests de sensibilite (environ 8 h), puis meilleurs reglages (environ 4 h)
+python scripts/11_sensitivity.py cluster_dims cluster_k rf_trees rf_pca \
+    size epochs snr badfrac lr
+python scripts/12_best.py
+python report/make_sensitivity_figures.py
 \end{lstlisting}
 
 \begin{thebibliography}{99}

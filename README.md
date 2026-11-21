@@ -31,7 +31,23 @@ Sur `test_good` (37 034 bons spectres), entraînement sur les bons spectres :
 - Entraîner sur tous les spectres améliore le macro F1 du CNN (0,857) mais double l'erreur sur Teff (45,1 K).
 - L'expérience complète prend 2 heures sur une RTX 3060 portable.
 
-Tableaux dans `results/`, rapport dans `report/rapport.pdf`.
+### Choix des paramètres
+
+Chaque valeur du projet a une raison, détaillée dans `docs/choix_parametres.md`. Des tests de sensibilité changent un paramètre à la fois. Les meilleurs réglages sont choisis sur la validation, puis mesurés une seule fois sur le test, avec 3 graines par CNN :
+
+| Modèle | Référence | Meilleurs réglages |
+|---|---|---|
+| Macro F1, CNN | 0,852 ± 0,010 | 0,865 ± 0,000 |
+| Macro F1, CNN, SNR < 70 | 0,642 ± 0,023 | 0,738 ± 0,022 |
+| Macro F1, forêt | 0,776 | 0,803 |
+| Erreur log g, forêt | 0,106 | 0,085 |
+
+- La forêt fait mieux avec 10 composantes PCA qu'avec 50.
+- Ajouter 50 % des mauvais spectres aide le CNN à classer. En régression, les mauvais spectres nuisent aux bons spectres.
+- Deux runs du même CNN diffèrent d'environ 0,01 de macro F1. Un seul run ne suffit pas à comparer deux réglages.
+- En régression, 30 époques sont trop courtes : la perte de validation baisse encore à 50.
+
+Tableaux dans `results/` (tests dans `results/sensitivity/` et `results/best/`), rapport dans `report/rapport.pdf`.
 
 Les résultats des versions 30 000 et 100 000 étoiles restent dans leurs dépôts.
 
@@ -70,6 +86,9 @@ python scripts/07_cluster.py             # K-means, GMM, HDBSCAN
 python scripts/08_report.py              # tableaux de résultats
 python scripts/09_quality_by_snr.py      # performance par tranche de SNR
 python scripts/10_label_source.py        # erreurs par origine d'étiquette
+python scripts/11_sensitivity.py cluster_dims cluster_k rf_trees rf_pca size epochs snr badfrac lr   # environ 8 h
+python scripts/12_best.py                # meilleurs réglages, 3 graines, environ 4 h
+python report/make_sensitivity_figures.py
 ```
 
 Pour lancer toute l'expérience qualité d'un coup :

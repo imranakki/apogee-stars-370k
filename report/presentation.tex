@@ -148,6 +148,57 @@ Cause : les étiquettes des mauvais spectres. Sur les 1\,504 étoiles FPARAM, l'
 \end{columns}
 \end{frame}
 
+\begin{frame}{Pourquoi ces nombres}
+\small
+\begin{tabular}{lll}
+\toprule
+Paramètre & Valeur & Raison \\
+\midrule
+SNR d'un bon spectre & 70 & seuil courant des études ASPCAP \\
+PCA du clustering & 10 axes & 74,7\,\% de la variance, la courbe s'aplatit \\
+$k$ & 3 & silhouette maximale \\
+Noyau du CNN & 7 pixels & couvre une raie d'absorption \\
+Époques & 30 & la meilleure époque de validation est gardée \\
+Forêt & 300 arbres & le gain s'arrête vers quelques centaines \\
+\bottomrule
+\end{tabular}\\[1em]
+\raggedright
+Nous testons chaque valeur : un paramètre change, tout le reste reste fixe.
+\end{frame}
+
+\begin{frame}{Tests : les données}
+\centering
+\includegraphics[height=0.68\textheight]{sens_data.png}\\[0.3em]
+\raggedright\small
+SNR 70 est optimal pour classer. Les mauvais spectres aident à classer, pas à mesurer. Avec 2\,\% des données, le CNN bat déjà la forêt.
+\end{frame}
+
+\begin{frame}{Tests : les hyperparamètres}
+\centering
+\includegraphics[height=0.68\textheight]{sens_hyper.png}\\[0.3em]
+\raggedright\small
+Classes : surapprentissage après l'époque 16. Teff : 30 époques sont trop courtes. Forêt : 10 axes valent mieux que 50.
+\end{frame}
+
+\begin{frame}{Tests : le clustering}
+\centering
+\includegraphics[width=\linewidth]{sens_cluster.png}\\[0.3em]
+\raggedright\small
+$k = 3$ sur 10 axes donne l'ARI le plus haut (0,41 en médiane sur 10 graines). À $k = 4$, aucune graine ne dépasse 0,30.
+\end{frame}
+
+\begin{frame}{Meilleurs réglages, mesurés sur 3 graines}
+\centering
+\includegraphics[width=\linewidth]{sens_best.png}\\[0.5em]
+\raggedright\small
+Choix sur la validation, test utilisé une seule fois.
+\begin{itemize}
+  \item CNN : macro F1 $0{,}852 \pm 0{,}010 \rightarrow 0{,}865 \pm 0{,}000$. SNR < 70 : $0{,}642 \rightarrow 0{,}738$.
+  \item Forêt : $0{,}776 \rightarrow 0{,}803$ avec 10 composantes.
+  \item Deux runs du même CNN diffèrent de 0,01. Un seul run ne suffit pas à comparer.
+\end{itemize}
+\end{frame}
+
 \begin{frame}{30\,000, 100\,000, 370\,000 étoiles}
 \centering
 \begin{tabular}{lrrr}
@@ -189,14 +240,14 @@ RTX 3060 portable (6 Go), 16 threads, 15 Go de RAM.
 \textbf{Limites}
 \begin{itemize}
   \item Étiquettes ASPCAP.
-  \item Une seule graine par modèle.
+  \item 3 graines pour la comparaison finale seulement.
   \item PCA et HDBSCAN sur 50\,000 étoiles.
 \end{itemize}
 \column{0.48\textwidth}
 \textbf{Suite}
 \begin{enumerate}
   \item Régression sur tous les spectres, étiquettes ASPCAP seulement.
-  \item GMM à $k = 4$ avec plusieurs graines.
+  \item CNN de régression sur 50 époques ou plus.
   \item Red clump / RGB par astérosismologie.
 \end{enumerate}
 \end{columns}
@@ -208,6 +259,7 @@ RTX 3060 portable (6 Go), 16 threads, 15 Go de RAM.
   \item \textbf{Le spectre seul sépare naines et géantes, sans étiquettes} (GMM, ARI 0,41).
   \item \textbf{Avec étiquettes, le CNN atteint un macro F1 de 0,86 et 24,7\,K d'erreur sur \teff{}.}
   \item \textbf{Plus de données améliore la régression, pas la limite red clump / RGB.}
+  \item \textbf{Les réglages choisis sur la validation portent le CNN à 0,865 et la forêt à 0,803.}
 \end{enumerate}
 \vspace{1.5em}
 \small Code : \url{github.com/imranakki/apogee-stars-370k}
