@@ -1,0 +1,208 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[french]{babel}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{ink}{HTML}{14202B}
+\definecolor{blue}{HTML}{0072B2}
+\definecolor{grey}{HTML}{5A6672}
+\titleformat{\section}{\Large\bfseries\color{blue}}{\thesection}{0.6em}{}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+
+\newcounter{qn}
+\newcommand{\Q}[1]{\stepcounter{qn}\par\vspace{8pt}\noindent{\bfseries\color{ink}Q\theqn.\ #1}\par\nopagebreak\vspace{2pt}}
+\newcommand{\teff}{$T_{\mathrm{eff}}$}
+\newcommand{\logg}{$\log g$}
+
+\title{\textbf{Questions et réponses}\\[4pt]\large Classification d'étoiles APOGEE DR17, version 370\,000 étoiles}
+\author{Félix Dubé \and Imran Akki \and Charles-Antoine Fournier \and Youssef Lahrichi \and Bastien Posez}
+\date{Préparation de la présentation, décembre 2026}
+
+\begin{document}
+\maketitle
+
+{\color{grey}Questions attendues du jury, avec une réponse courte et les chiffres qui la soutiennent. Tous les scores portent sur \texttt{test\_good} (37\,034 bons spectres) sauf mention contraire.}
+
+\tableofcontents
+
+%=====================================================================
+\section{Le projet}
+
+\Q{Quelle est la question du projet ?}
+Un algorithme retrouve-t-il le type d'une étoile à partir de son seul spectre infrarouge ? Nous testons deux voies : sans étiquettes (clustering), puis avec étiquettes (CNN 1-D contre forêt aléatoire). Une troisième expérience mesure l'effet des spectres de mauvaise qualité.
+
+\Q{Pourquoi APOGEE ?}
+APOGEE DR17 publie 733\,901 spectres infrarouges à haute résolution, avec des paramètres ASPCAP (\teff{}, \logg{}, [M/H]) pour chacun. L'infrarouge traverse la poussière du disque galactique. Les étiquettes existent déjà : nous jugeons les modèles sans annoter à la main.
+
+\Q{Qu'apporte cette version par rapport aux deux précédentes ?}
+3,7 fois plus d'étoiles (370\,000 contre 99\,773) et des tests de sensibilité sur chaque paramètre. Le macro F1 du CNN passe de 0,818 (30\,781 étoiles) à 0,834 (99\,773), puis 0,848 (370\,000). L'erreur sur \teff{} passe de 44,6 à 32,9, puis 24,7\,K.
+
+\Q{Qu'est-ce qui ne change pas avec plus de données ?}
+Le rappel du red clump : 56\,\%, 60\,\%, 58\,\%. L'ARI du GMM à 3 groupes : 0,42, 0,42, 0,41. La limite tient à la physique, pas à la taille de l'échantillon.
+
+%=====================================================================
+\section{Données et étiquettes}
+
+\Q{Comment avez-vous choisi les 370\,000 étoiles ?}
+Nous retirons du catalogue allStar le télescope de 1\,m, les doublons, les étoiles standards et les spectres de SNR < 5. Nous tirons ensuite au hasard 2 bons spectres pour 1 mauvais, et ajoutons 785 membres d'amas ouverts. Résultat : 246\,572 bons et 123\,428 mauvais.
+
+\Q{Qu'est-ce qu'un bon spectre ?}
+SNR $\geq$ 70, aucun drapeau STARFLAG, pas de drapeau STAR\_BAD dans ASPCAPFLAG, \teff{} et \logg{} publiés. 70 est le seuil courant des études ASPCAP. APOGEE vise un SNR de 100.
+
+\Q{Pourquoi un ratio de 2 bons pour 1 mauvais ?}
+Assez de mauvais spectres pour mesurer leur effet (123\,428), sans qu'ils dominent l'entraînement. 69\,\% des mauvais spectres ont un SNR $\geq$ 70 : un drapeau du pipeline les écarte, pas le bruit.
+
+\Q{Comment définissez-vous les classes ?}
+Par \logg{}, la gravité de surface : naine si \logg{} $\geq$ 4,0, sous-géante entre 3,5 et 4,0, géante sous 3,5. Le red clump vient du catalogue red clump DR17 (Bovy et al. 2014). Ces seuils sont des définitions physiques. Nous ne les optimisons pas.
+
+\Q{Pourquoi un catalogue externe pour le red clump ?}
+Red clump et RGB ont la même surface : même \teff{}, même \logg{}. Seul leur cœur diffère (fusion de l'hélium ou non). Le catalogue DR17 les sépare avec une méthode calibrée sur l'astérosismologie. \logg{} seul ne le permet pas.
+
+\Q{Les classes sont-elles déséquilibrées ?}
+Oui. Parmi les bons spectres : 137\,454 RGB, 73\,040 naines, 22\,931 red clump, 13\,147 sous-géantes. Pour cette raison nous rapportons le macro F1, où chaque classe compte autant.
+
+\Q{Comment découpez-vous les données ?}
+70\,\% entraînement, 15\,\% validation, 15\,\% test, graine 42. La validation ne contient que des bons spectres : chaque run choisit sa meilleure époque sur le même jeu propre. Le test existe en deux versions : \texttt{test\_good} (37\,034) et \texttt{test\_all} (55\,505, mauvais inclus).
+
+\Q{Quel prétraitement appliquez-vous aux spectres ?}
+Nous retirons les 1\,061 pixels des trous entre détecteurs. Il reste 7\,514 pixels sur 8\,575. Les pixels douteux sont remis au continuum.
+
+%=====================================================================
+\section{Mémoire et calcul}
+
+\Q{Comment tenir 370\,000 spectres dans 15\,Go de mémoire ?}
+Quatre changements de code. Spectres en float16 : 11,1 à 5,6\,Go. Lots lus à la volée, sans copie de 3,9\,Go. PCA ajustée sur 50\,000 spectres : 11 à 1,5\,Go. HDBSCAN sur 50\,000 étoiles.
+
+\Q{Le float16 ne fait-il pas perdre de l'information ?}
+Non. Près du continuum, le pas du float16 vaut 0,0005, vingt fois moins que le bruit d'un bon spectre. Les calculs se font en float32.
+
+\Q{Combien de temps prend l'expérience ?}
+2 heures pour l'expérience complète sur une RTX 3060 portable (6\,Go), 16 threads et 15\,Go de RAM. Un CNN prend 14 à 20 minutes. Le téléchargement prend environ 6 heures, une seule fois. Les tests de sensibilité prennent 8 heures, et la comparaison finale sur 3 graines 4 heures.
+
+%=====================================================================
+\section{Sans étiquettes}
+
+\Q{Pourquoi réduire la dimension avant le clustering ?}
+Avec 7\,514 dimensions, les distances perdent leur sens et K-means et le GMM deviennent lents. 10 composantes PCA gardent 74,7\,\% de la variance. Le test le confirme : le GMM à 3 groupes atteint son meilleur ARI (0,41) à 10 composantes.
+
+\Q{Que montre le t-SNE ?}
+Naines et géantes forment deux continents, reliés par les sous-géantes. Le red clump reste mêlé à la RGB. Les mauvais spectres se mêlent aux bons. Le t-SNE sert à voir, pas à mesurer.
+
+\Q{Pourquoi le GMM fait-il mieux que K-means ?}
+K-means coupe en groupes ronds de taille comparable. Les classes stellaires forment des nuages allongés de tailles différentes. Le GMM ajuste des ellipses libres. À 3 groupes : ARI 0,41 pour le GMM, 0,08 pour K-means.
+
+\Q{Qu'est-ce que l'ARI ?}
+L'accord entre les groupes trouvés et les vraies classes, corrigé du hasard : 0 pour un tirage au hasard, 1 pour un accord parfait. Les étiquettes servent seulement à juger, jamais à former les groupes.
+
+\Q{Pourquoi 3 groupes et pas 4, le nombre de classes ?}
+La silhouette est maximale à $k = 3$. Sur 10 graines, l'ARI médian vaut 0,41 à $k = 3$ et 0,10 à $k = 4$. À $k = 4$, aucune graine ne dépasse 0,30 : le GMM coupe les naines en deux au lieu d'isoler le red clump.
+
+\Q{Que trouve le GMM à 3 groupes ?}
+Groupe A : la séquence principale, avec 73\,024 des 73\,040 naines. Groupe B : le haut de la RGB. Groupe C : le red clump et le bas de la RGB, avec 97\,\% du red clump.
+
+\Q{Le 0,44 de la version 100\,000 à $k = 4$ était-il faux ?}
+Il était fragile. Il ne se reproduit avec aucune des 10 graines à 370\,000 étoiles. Un résultat de clustering obtenu avec une seule graine ne suffit pas.
+
+\Q{Pourquoi une silhouette si basse (0,28) ?}
+Les étoiles forment un continuum : une étoile évolue sans saut d'une classe à l'autre. Les groupes n'ont pas de frontière nette. Une silhouette basse est attendue.
+
+\Q{Et HDBSCAN ?}
+HDBSCAN cherche des zones denses et classe 24\,\% des étoiles comme bruit. ARI de $-0{,}03$ : le continuum n'a pas de zones denses séparées.
+
+\Q{Retrouvez-vous les populations galactiques (disques, halo, bulbe) ?}
+Non. ARI $\leq$ 0,11. Ces populations diffèrent surtout par la chimie fine et la position, pas par la forme globale du spectre.
+
+%=====================================================================
+\section{Avec étiquettes}
+
+\Q{Pourquoi un CNN 1-D ?}
+Une raie d'absorption est un motif local. Un filtre convolutif glisse le long du spectre et reconnaît le même motif partout. Un noyau de 7 pixels couvre une raie APOGEE. 3 blocs (16, 32 et 64 filtres) ramènent 7\,514 pixels à 117 positions. 150\,000 paramètres.
+
+\Q{Pourquoi une forêt aléatoire comme référence ?}
+C'est un modèle solide, rapide, sans réglage fin, qui ne voit pas l'ordre des pixels. L'écart entre forêt et CNN mesure ce que la structure locale du spectre apporte : 0,776 contre 0,848 de macro F1.
+
+\Q{Quels sont les résultats principaux ?}
+CNN entraîné sur les bons spectres : macro F1 0,848, \teff{} 24,7\,K, \logg{} 0,050, [M/H] 0,021. Forêt : macro F1 0,776, \teff{} 26,3\,K, \logg{} 0,106.
+
+\Q{Où le CNN se trompe-t-il ?}
+Il reconnaît 98\,\% des naines, 85\,\% des sous-géantes et 95\,\% des RGB. Il ne reconnaît que 58\,\% du red clump : 42\,\% partent en RGB.
+
+\Q{Pourquoi le red clump résiste-t-il ?}
+La différence tient au cœur de l'étoile. Le spectre montre la surface, et la surface des deux classes est presque identique. Plus de données n'y change rien. L'astérosismologie, qui sonde le cœur par les oscillations, sépare ces classes.
+
+\Q{Le CNN apprend-il la physique ou ASPCAP ?}
+ASPCAP. Les étiquettes viennent d'ASPCAP, et le CNN apprend à le reproduire, erreurs comprises. Nos erreurs mesurent l'écart à ASPCAP, pas à la vérité.
+
+%=====================================================================
+\section{Qualité des données}
+
+\Q{Faut-il garder les mauvais spectres ?}
+Pour classer, oui. Entraîné sur tous les spectres, le CNN passe de 0,848 à 0,857 de macro F1 sur \texttt{test\_good}, avec un gain dans chaque tranche de SNR. Pour mesurer, non : l'erreur sur \teff{} passe de 24,7 à 45,1\,K.
+
+\Q{Pourquoi cet effet opposé ?}
+À cause des étiquettes des mauvais spectres. Sur les 1\,504 étoiles de test étiquetées par FPARAM, l'erreur atteint 882\,K. Une classe tolère une étiquette approximative. Une mesure fine, non.
+
+\Q{Que se passe-t-il sur les spectres bruités ?}
+Entre SNR 30 et 70, l'erreur du CNN sur \teff{} vaut 167\,K entraîné sur les bons spectres, 123\,K entraîné sur tous. Sous SNR 30, 611 et 525\,K. Les mauvais spectres apprennent au modèle à lire le bruit.
+
+%=====================================================================
+\section{Choix des paramètres}
+
+\Q{Comment justifiez-vous chaque nombre ?}
+Chaque valeur a une raison écrite (fichier \texttt{docs/choix\_parametres.md}), puis un test : un paramètre change à la fois, tout le reste garde sa valeur de référence. 9 tests au total.
+
+\Q{Le seuil de SNR à 70 est-il le bon ?}
+Pour classer, oui : 70 donne le meilleur macro F1 (0,866). À 150, l'entraînement perd 42\,\% de ses spectres. Pour mesurer \teff{}, un seuil plus bas aide un peu : 26,6\,K à 50 contre 28,3\,K à 70.
+
+\Q{Combien de données faut-il ?}
+Avec 2\,\% des bons spectres (3\,450), le CNN atteint 0,785 de macro F1, plus que la forêt sur 100\,\% (0,776). L'erreur sur \teff{} descend de 54 à 27\,K entre 2 et 50\,\%, puis ne bouge plus.
+
+\Q{30 époques suffisent-elles ?}
+Pour classer, oui : la perte de validation est minimale à l'époque 16, puis remonte (surapprentissage). Garder la meilleure époque corrige l'effet. Pour la régression, non : la perte baisse encore à l'époque 50, où l'erreur sur \teff{} vaut 25,0\,K contre 35,3\,K à l'époque 30.
+
+\Q{Pourquoi 10 composantes PCA pour la forêt et pas 50 ?}
+Le test le montre : 10 composantes donnent 0,803 de macro F1, contre 0,776 à 50 et 0,737 à 100. Avec trop d'axes, chaque arbre tire surtout des axes de bruit. Notre choix de départ (50) était sous-optimal.
+
+\Q{Comment avez-vous choisi les meilleurs réglages sans tricher ?}
+Sur la validation seulement. Le test sert une seule fois, à la fin. Le choix du GMM n'utilise aucune étiquette : silhouette pour $k$, puis la plus faible BIC parmi 10 graines.
+
+\Q{Que gagnent les meilleurs réglages ?}
+CNN : macro F1 $0{,}852 \pm 0{,}010$ à $0{,}865 \pm 0{,}000$ sur 3 graines, et 0,642 à 0,738 sur les spectres de SNR < 70. Forêt : 0,776 à 0,803, et \logg{} de 0,106 à 0,085. \teff{} ne gagne rien : 26,3 contre 26,6\,K, dans le bruit des graines.
+
+\Q{Pourquoi 3 graines ?}
+Le même CNN relancé varie de $\pm 0{,}010$ de macro F1 et de $\pm 1{,}6$\,K sur \teff{}. Comparer deux runs uniques confondrait le réglage et le hasard. La forêt, à graine fixe, donne le même résultat à chaque run.
+
+\Q{Le 0,848 du rapport et le 0,852 de la référence se contredisent-ils ?}
+Non. Le 0,848 vient d'un seul run (graine 42). Le 0,852 est la moyenne de 3 graines, avec un écart type de 0,010. Les deux valeurs restent dans le bruit.
+
+%=====================================================================
+\section{Limites et suite}
+
+\Q{Quelles sont les principales limites ?}
+Étiquettes ASPCAP, avec leurs propres erreurs. Une seule graine hors de la comparaison finale. CNN de régression arrêté à 30 époques. PCA et HDBSCAN sur 50\,000 étoiles. 85 étoiles demandées manquent.
+
+\Q{Que feriez-vous avec plus de temps ?}
+Par ordre de priorité :
+\begin{enumerate}[nosep]
+  \item Régression sur tous les spectres, avec les étiquettes ASPCAP seulement.
+  \item CNN de régression sur 50 époques ou plus.
+  \item Chaque entraînement répété avec 5 graines.
+  \item Séparation red clump / RGB validée par astérosismologie.
+\end{enumerate}
+
+\Q{Le résultat se reproduit-il ?}
+Oui. Graines fixées, code public (\url{https://github.com/imranakki/apogee-stars-370k}), une commande par étape. Les étapes de téléchargement et d'entraînement reprennent après une interruption. Les CSV de chaque test sont dans \texttt{results/}.
+
+\Q{En une phrase, que retenir ?}
+Le spectre seul sépare naines et géantes sans étiquette (ARI 0,41). Avec étiquettes, le CNN atteint 0,865 de macro F1 une fois réglé sur la validation. La limite red clump / RGB vient de la physique, pas des données.
+
+\end{document}

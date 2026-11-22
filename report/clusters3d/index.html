@@ -1,0 +1,202 @@
+<title>Amas stellaires 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600&display=swap">
+<style>
+/* Layout: full-height 3D scene on the left, narrow reading panel on the right, stacked on phones */
+:root {
+  --bg: #F6F8FA; --panel: #FFFFFF; --fg: #14202B; --muted: #5A6672; --line: #D5DBE1; --accent: #0072B2;
+  --grid: #C9D1D9;
+  --a: #0072B2; --b: #E69F00; --c: #CC79A7; --s: #009E73;
+  --display: 'Space Grotesk', Inter, system-ui, sans-serif;
+  --body: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0E141A; --panel: #151D25; --fg: #E6EBF0; --muted: #94A1AD; --line: #2A3540; --accent: #56B4E9;
+  --grid: #2E3A46; --a: #56B4E9; --b: #E69F00; --c: #CC79A7; --s: #2BB58C; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0E141A; --panel: #151D25; --fg: #E6EBF0; --muted: #94A1AD; --line: #2A3540; --accent: #56B4E9;
+  --grid: #2E3A46; --a: #56B4E9; --b: #E69F00; --c: #CC79A7; --s: #2BB58C; color-scheme: dark }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.app { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 0; height: 100%; }
+.scene { position: relative; min-width: 0; min-height: 420px; }
+#plot { position: absolute; inset: 0; }
+.status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); }
+aside { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto;
+  padding-block: 24px; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+h1 { font-family: var(--display); font-size: 26px; line-height: 1.15; margin: 0; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); }
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; margin: 0 0 6px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; padding: 8px 10px; border: 0; background: transparent; color: var(--fg); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; font-weight: 600; }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.legend { display: flex; flex-direction: column; gap: 6px; }
+.legend button { display: flex; align-items: center; gap: 10px; font: inherit; font-size: 14px; color: var(--fg); background: none; border: 0; padding: 4px 0; cursor: pointer; text-align: left; }
+.legend button[aria-pressed="false"] { opacity: 0.35; }
+.legend button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.legend small { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { padding: 5px 4px; text-align: right; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--muted); font-weight: 600; }
+td.top { font-weight: 700; }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+.hint { font-size: 12px; color: var(--muted); margin: 0; border-top: 1px solid var(--line); padding-top: 12px; }
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 62vh auto; height: auto; }
+  aside { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+}
+</style>
+
+<div class="app">
+  <div class="scene">
+    <div id="plot" role="img" aria-label="Nuage 3D de 20 000 étoiles APOGEE coloré par groupe"></div>
+    <div class="status" id="status">Chargement de 20 000 étoiles…</div>
+  </div>
+  <aside>
+    <div>
+      <h1>Les 3 groupes du GMM, en 3D</h1>
+    </div>
+    <p class="lede" id="lede">20 000 bons spectres tirés au hasard. Le GMM a formé les groupes à partir du spectre seul, sans voir aucune étiquette.</p>
+
+    <div>
+      <p class="label">Couleur</p>
+      <div class="seg" role="group" aria-label="Couleur">
+        <button id="c-gmm" aria-pressed="true">Groupes GMM</button>
+        <button id="c-cls" aria-pressed="false">Classes ASPCAP</button>
+      </div>
+    </div>
+    <div>
+      <p class="label">Axes</p>
+      <div class="seg" role="group" aria-label="Axes">
+        <button id="a-pc" aria-pressed="true">PCA 1, 2, 3</button>
+        <button id="a-ph" aria-pressed="false">Teff, log g, [M/H]</button>
+      </div>
+    </div>
+
+    <div>
+      <p class="label">Légende (cliquez pour masquer)</p>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div>
+      <p class="label">Qui tombe dans quel groupe (246 572 bons spectres)</p>
+      <table>
+        <thead><tr><th>Groupe</th><th>Naines</th><th>Sous-g.</th><th>RGB</th><th>RC</th></tr></thead>
+        <tbody id="ct"></tbody>
+      </table>
+    </div>
+    <p class="note" id="axisnote"></p>
+    <p class="hint">Glissez pour tourner, molette ou pincement pour zoomer. Survolez une étoile pour voir ses valeurs. GMM à 3 groupes sur 10 composantes PCA, graine 4 (plus faible BIC parmi 10).</p>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js"></script>
+<script>
+(() => {
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const SETS = {
+    gmm: { field: 'gmm', items: [
+      { k: 'A', name: 'A · séquence principale', color: '--a' },
+      { k: 'B', name: 'B · haut de la RGB', color: '--b' },
+      { k: 'C', name: 'C · red clump et bas de la RGB', color: '--c' } ] },
+    cls: { field: 'cls', items: [
+      { k: 'N', name: 'Naines', color: '--a' },
+      { k: 'S', name: 'Sous-géantes', color: '--s' },
+      { k: 'G', name: 'Géantes rouges (RGB)', color: '--b' },
+      { k: 'R', name: 'Red clump', color: '--c' } ] }
+  };
+  const AXES = {
+    pc: { t: ['PCA 1', 'PCA 2', 'PCA 3'], rev: [false, false, false],
+      note: 'Les 3 premiers axes de la PCA, calculés sur le spectre seul. Le GMM utilise 10 axes : les groupes se recouvrent un peu ici, car 7 axes manquent à la vue.' },
+    ph: { t: ['Teff (K)', 'log g', '[M/H]'], rev: [true, true, false],
+      note: 'Mêmes étoiles, placées par leurs mesures ASPCAP. Teff et log g vont à rebours, comme dans un diagramme de Kiel. Le GMM n\'a jamais vu ces valeurs.' }
+  };
+  let data = null, color = 'gmm', axes = 'pc';
+  const hidden = { gmm: new Set(), cls: new Set() };
+  const plot = document.getElementById('plot');
+
+  function traces() {
+    const set = SETS[color], src = data[set.field];
+    const P = axes === 'pc' ? data.pc : data.phys;
+    return set.items.map(it => {
+      const x = [], y = [], z = [], text = [];
+      for (let i = 0; i < src.length; i++) {
+        if (src[i] !== it.k) continue;
+        const p = P[i], ph = data.phys[i];
+        x.push(p[0]); y.push(p[1]); z.push(p[2]);
+        text.push(`Teff ${ph[0]} K · log g ${ph[1]} · [M/H] ${ph[2]}`);
+      }
+      return { type: 'scatter3d', mode: 'markers', name: it.name, x, y, z, text,
+        hovertemplate: '%{text}<extra>' + it.name + '</extra>',
+        visible: hidden[color].has(it.k) ? 'legendonly' : true,
+        marker: { size: 2.2, color: css(it.color), opacity: 0.7 } };
+    });
+  }
+  function layout() {
+    const fg = css('--fg'), grid = css('--grid'), muted = css('--muted');
+    const ax = i => ({ title: { text: AXES[axes].t[i], font: { color: fg, size: 13 } },
+      autorange: AXES[axes].rev[i] ? 'reversed' : true, gridcolor: grid, zerolinecolor: grid,
+      showbackground: false, tickfont: { color: muted, size: 10 }, color: muted });
+    return { paper_bgcolor: css('--bg'), plot_bgcolor: css('--bg'), showlegend: false,
+      margin: { l: 0, r: 0, t: 0, b: 0 }, font: { family: css('--body') },
+      hoverlabel: { bgcolor: css('--panel'), bordercolor: css('--line'), font: { color: fg } },
+      scene: { xaxis: ax(0), yaxis: ax(1), zaxis: ax(2), aspectmode: 'cube',
+        camera: { eye: { x: 1.5, y: 1.5, z: 0.9 } } },
+      uirevision: axes };
+  }
+  function draw() {
+    Plotly.react(plot, traces(), layout(), { responsive: true, displaylogo: false,
+      modeBarButtonsToRemove: ['toImage', 'resetCameraLastSave3d'] });
+    renderLegend();
+    document.getElementById('axisnote').textContent = AXES[axes].note;
+  }
+  function renderLegend() {
+    const set = SETS[color], src = data[set.field], box = document.getElementById('legend');
+    box.innerHTML = '';
+    set.items.forEach(it => {
+      let n = 0; for (let i = 0; i < src.length; i++) if (src[i] === it.k) n++;
+      const b = document.createElement('button');
+      b.setAttribute('aria-pressed', String(!hidden[color].has(it.k)));
+      b.innerHTML = `<span class="dot" style="background:var(${it.color})"></span><span>${it.name}</span><small>${n.toLocaleString('fr-FR')}</small>`;
+      b.addEventListener('click', () => {
+        hidden[color].has(it.k) ? hidden[color].delete(it.k) : hidden[color].add(it.k);
+        draw();
+      });
+      box.appendChild(b);
+    });
+  }
+  function renderTable() {
+    const rows = { A: 'A · séq. principale', B: 'B · haut RGB', C: 'C · RC et bas RGB' };
+    const cols = ['dwarf', 'subgiant', 'rgb', 'rc'];
+    document.getElementById('ct').innerHTML = Object.keys(rows).map(k => {
+      const r = data.crosstab[k], max = Math.max(...cols.map(c => r[c]));
+      return `<tr><td><span class="dot" style="display:inline-block;vertical-align:-1px;margin-right:6px;background:var(--${k.toLowerCase()})"></span>${k}</td>` +
+        cols.map(c => `<td class="${r[c] === max ? 'top' : ''}">${r[c].toLocaleString('fr-FR')}</td>`).join('') + '</tr>';
+    }).join('');
+  }
+  function toggle(group, val) {
+    document.querySelectorAll(`[id^="${group}-"]`).forEach(b => b.setAttribute('aria-pressed', String(b.id === `${group}-${val}`)));
+  }
+  document.getElementById('c-gmm').onclick = () => { color = 'gmm'; toggle('c', 'gmm'); data && draw(); };
+  document.getElementById('c-cls').onclick = () => { color = 'cls'; toggle('c', 'cls'); data && draw(); };
+  document.getElementById('a-pc').onclick = () => { axes = 'pc'; toggle('a', 'pc'); data && draw(); };
+  document.getElementById('a-ph').onclick = () => { axes = 'ph'; toggle('a', 'ph'); data && draw(); };
+
+  new MutationObserver(() => data && draw()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => data && draw());
+
+  fetch('stars.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => {
+    data = d;
+    document.getElementById('status').hidden = true;
+    document.getElementById('lede').textContent = `20 000 des ${d.n_good.toLocaleString('fr-FR')} bons spectres, tirés au hasard. Le GMM a formé les groupes à partir du spectre seul, sans voir aucune étiquette. Accord avec les classes : ARI ${String(d.ari).replace('.', ',')}.`;
+    renderTable(); draw();
+  }).catch(e => {
+    document.getElementById('status').textContent = 'Les données des étoiles n\'ont pas pu se charger. Rechargez la page.';
+  });
+})();
+</script>
