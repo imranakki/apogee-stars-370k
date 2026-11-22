@@ -9,7 +9,7 @@ Rapport complet : [`report/rapport.pdf`](report/rapport.pdf). Présentation : [`
 
 ## Résumé
 
-Nous classons 370 000 étoiles APOGEE DR17 à partir de leur seul spectre infrarouge. C'est 3,7 fois plus que la version précédente (99 773 étoiles) et 12 fois plus que la première (30 781). Le protocole ne change pas. Le code change pour tenir dans 15 Go de mémoire.
+Nous classons 370 000 étoiles APOGEE DR17 à partir de leur seul spectre infrarouge. Le code tient dans 15 Go de mémoire, sur un portable avec une RTX 3060.
 
 | Résultat | Valeur |
 |---|---|
@@ -23,8 +23,8 @@ Nous classons 370 000 étoiles APOGEE DR17 à partir de leur seul spectre infrar
 
 Trois messages :
 
-1. Sans étiquettes, le spectre sépare naines, haut de la RGB et red clump avec bas de la RGB. Le choix k = 4 de la version 100 000 ne se reproduit pas.
-2. Avec étiquettes, la régression profite le plus de l'échantillon plus grand. Les mauvais spectres aident la classification et nuisent à la régression sur les bons spectres.
+1. Sans étiquettes, le spectre sépare naines, haut de la RGB et red clump avec bas de la RGB. À k = 4, l'ARI tombe à 0,10 et dépend de la graine.
+2. Avec étiquettes, le CNN dépasse la forêt sur 2 % des données d'entraînement déjà. Les mauvais spectres aident la classification et nuisent à la régression sur les bons spectres.
 3. La confusion red clump / RGB venait des étiquettes, pas du spectre. Avec les étiquettes d'astérosismologie, un CNN atteint 99 % de rappel et 3 % de contamination.
 
 ---
@@ -33,21 +33,13 @@ Trois messages :
 
 APOGEE DR17 publie les spectres infrarouges de 657 000 étoiles. Le pipeline ASPCAP en tire la température effective Teff, la gravité de surface log g et la métallicité [M/H]. Notre question : un algorithme regroupe-t-il les étoiles en classes physiques à partir du spectre seul ?
 
-Garcia-Dias et al. (2018) ont montré que K-means sépare naines, sous-géantes, red clump et RGB dans APOGEE. Leur résultat dépendait de l'initialisation. Nous testons ce résultat à grande échelle et suivons les trois demandes du cours :
+Garcia-Dias et al. (2018) ont montré que K-means sépare naines, sous-géantes, red clump et RGB dans APOGEE. Leur résultat dépendait de l'initialisation. Nous testons ce résultat sur 370 000 étoiles et suivons les trois demandes du cours :
 
 1. Réduction de dimension (PCA, t-SNE, UMAP) pour voir si les classes se séparent.
 2. Apprentissage supervisé avec un CNN 1-D, comparé à une forêt aléatoire.
 3. Impact de la qualité des données : entraînement sur les bons spectres, puis sur tous.
 
-Ce dépôt est la troisième version du projet :
-
-| Version | Catalogue | Étoiles | Dépôt |
-|---|---|---|---|
-| 1 | `allStarLite` | 30 781 | [apogee-stars](https://github.com/imranakki/apogee-stars) |
-| 2 | `allStar`, étiquettes enrichies | 99 773 | [apogee-stars-full](https://github.com/imranakki/apogee-stars-full) |
-| 3 | `allStar`, mêmes étiquettes | 370 000 | ce dépôt |
-
-Nous cherchons quels résultats tiennent quand l'échantillon grandit, et lesquels plafonnent.
+Nous mesurons aussi l'effet de la taille d'entraînement, de 2 % à 100 % des bons spectres, et testons chaque paramètre du projet.
 
 ---
 
@@ -69,12 +61,6 @@ flowchart LR
 
 Un bon spectre vérifie quatre critères : SNR ≥ 70, `STARFLAG = 0`, pas de `STAR_BAD` dans `ASPCAPFLAG`, Teff et log g publiés. Le SNR médian vaut 168 pour les bons et 103 pour les mauvais. 69 % des mauvais spectres ont un SNR ≥ 70 : un drapeau les écarte, pas le bruit.
 
-| | Version 1 | Version 2 | Version 3 |
-|---|---:|---:|---:|
-| Étoiles | 30 781 | 99 773 | 370 000 |
-| Bons spectres | 20 000 env. | 66 372 | 246 572 |
-| Mauvais spectres | 10 000 env. | 33 401 | 123 428 |
-| Étiquettes FPARAM | 0 | 2 815 | 10 361 |
 
 ### 2.2 Étiquettes
 
@@ -118,9 +104,9 @@ Le test compte 37 034 bons spectres (`test_good`). Tous les scores ci-dessous po
 
 ## 3. Tenir 370 000 spectres dans 15 Go
 
-En float32, 370 000 spectres de 7 514 pixels occupent 11,1 Go. La machine a 15 Go de mémoire, dont 10 Go libres. Le code de la version 2 dépassait la mémoire à trois endroits.
+En float32, 370 000 spectres de 7 514 pixels occupent 11,1 Go. La machine a 15 Go de mémoire, dont 10 Go libres. Un code qui charge tout en float32, copie le jeu d'entraînement pour PyTorch et ajuste la PCA sur la matrice entière dépasse la mémoire à trois endroits.
 
-| Changement | Avant | Après |
+| Changement | Approche directe | Ce dépôt |
 |---|---:|---:|
 | Spectres stockés en float16 (`features_X.npy`) | 11,1 Go | 5,6 Go |
 | Lots lus ligne par ligne, convertis en float32 au vol | copie de 3,9 Go | un lot |
@@ -227,24 +213,24 @@ Le GMM à trois groupes reste la meilleure méthode. Composition de ses groupes 
 | C : red clump et bas de la RGB | 13 | 2 342 | 74 385 | **22 267** |
 
 ```mermaid
-sankey-beta
-Naines,A séquence principale,73024
-Naines,C red clump + bas RGB,13
-Sous-géantes,A séquence principale,10796
-Sous-géantes,B haut RGB,9
-Sous-géantes,C red clump + bas RGB,2342
-RGB,A séquence principale,7126
-RGB,B haut RGB,55943
-RGB,C red clump + bas RGB,74385
-Red clump,A séquence principale,201
-Red clump,B haut RGB,463
-Red clump,C red clump + bas RGB,22267
+flowchart LR
+    N["Naines<br/>73 040"] -- "73 024" --> A["A : séquence principale<br/>91 147"]
+    N -- "13" --> C
+    SG["Sous-géantes<br/>13 147"] -- "10 796" --> A
+    SG -- "9" --> B
+    SG -- "2 342" --> C
+    RGB["RGB<br/>137 454"] -- "7 126" --> A
+    RGB -- "55 943" --> B["B : haut de la RGB<br/>56 418"]
+    RGB -- "74 385" --> C["C : red clump et bas de la RGB<br/>99 007"]
+    RC["Red clump<br/>22 931"] -- "201" --> A
+    RC -- "463" --> B
+    RC -- "22 267" --> C
 ```
 
 ![Kiel GMM](report/figures/kiel_gmm.png)
 *Figure 4. Diagramme de Kiel des bons spectres, coloré par les groupes du GMM à k = 3.*
 
-À k = 4, l'ARI tombe à 0,10. Le quatrième groupe coupe les naines en deux, et l'un des morceaux absorbe 18 753 étoiles du red clump et 62 668 RGB. La version 2 donnait 0,44 à k = 4, la version 1 donnait 0,09. Le résultat à quatre groupes dépend de l'échantillon.
+À k = 4, l'ARI tombe à 0,10. Le quatrième groupe coupe les naines en deux, et l'un des morceaux absorbe 18 753 étoiles du red clump et 62 668 RGB. Sur 10 graines, l'ARI à k = 4 ne dépasse pas 0,30 (section 6). Le choix k = 4 reste fragile.
 
 ![Scan K-means](report/figures/kmeans_scan.png)
 *Figure 5. Silhouette et stabilité de K-means selon k (PCA, bons spectres).*
@@ -273,7 +259,7 @@ xychart-beta
     bar [98, 85, 95, 58]
 ```
 
-Le CNN reconnaît 98 % des naines, 85 % des sous-géantes et 95 % des RGB. Le red clump plafonne à 58 % : 42 % sont classées RGB. À 100 000 étoiles, la forêt battait le CNN sur Teff. À 370 000, le CNN la dépasse : 24,7 K contre 26,3 K.
+Le CNN reconnaît 98 % des naines, 85 % des sous-géantes et 95 % des RGB. Le red clump plafonne à 58 % : 42 % sont classées RGB. Le CNN bat aussi la forêt sur Teff : 24,7 K contre 26,3 K.
 
 ### 5.4 Impact de la qualité des données
 
@@ -304,29 +290,29 @@ L'erreur vient des étiquettes. Sur les 1 504 étoiles de test étiquetées par 
 | ASPCAP | mauvaise | 16 967 | 138 | 101 | 0,113 / 0,115 |
 | FPARAM | mauvaise | 1 504 | 882 | 514 | 0,541 / 0,412 |
 
-### 5.5 Effet de la taille de l'échantillon
+### 5.5 Effet de la taille d'entraînement
 
-| Mesure | 30 781 | 99 773 | 370 000 |
-|---|---:|---:|---:|
-| Macro F1, CNN | 0,818 | 0,834 | **0,848** |
-| Macro F1, forêt | 0,696 | 0,751 | **0,776** |
-| Erreur Teff, CNN (K) | 44,6 | 32,9 | **24,7** |
-| Erreur log g, CNN (dex) | 0,083 | 0,069 | **0,050** |
-| Erreur [M/H], CNN (dex) | 0,032 | 0,025 | **0,021** |
-| Rappel du red clump, CNN | 56 % | 60 % | 58 % |
-| ARI, GMM, k = 3 | 0,42 | 0,42 | 0,41 |
-| ARI, GMM, k = 4 | 0,09 | 0,44 | 0,10 |
+Le test de sensibilité `size` entraîne chaque modèle sur une fraction des 172 512 bons spectres d'entraînement. Le test reste `test_good`.
+
+| Fraction | Étoiles | Macro F1, CNN | Macro F1, forêt | Teff CNN (K) | Teff forêt (K) | log g CNN (dex) |
+|---:|---:|---:|---:|---:|---:|---:|
+| 2 % | 3 450 | 0,785 | 0,635 | 53,9 | 47,2 | 0,105 |
+| 5 % | 8 626 | 0,817 | 0,689 | 45,9 | 39,0 | 0,090 |
+| 10 % | 17 251 | 0,819 | 0,715 | 46,5 | 35,1 | 0,085 |
+| 25 % | 43 128 | 0,833 | 0,741 | 34,4 | 30,2 | 0,067 |
+| 50 % | 86 256 | 0,856 | 0,766 | 26,9 | 28,2 | 0,060 |
+| 100 % | 172 512 | **0,865** | **0,776** | 27,9 | **26,3** | **0,058** |
 
 ```mermaid
 xychart-beta
-    title "Erreur du CNN sur Teff selon la taille (K)"
-    x-axis ["30 781", "99 773", "370 000"]
-    y-axis "Erreur Teff (K)" 0 --> 50
-    bar [44.6, 32.9, 24.7]
-    line [44.6, 32.9, 24.7]
+    title "Macro F1 selon la taille d'entraînement (CNN en haut, forêt en bas)"
+    x-axis ["2 %", "5 %", "10 %", "25 %", "50 %", "100 %"]
+    y-axis "Macro F1" 0.6 --> 0.9
+    line [0.785, 0.817, 0.819, 0.833, 0.856, 0.865]
+    line [0.635, 0.689, 0.715, 0.741, 0.766, 0.776]
 ```
 
-L'erreur sur Teff baisse de 26 % de 30 000 à 100 000 étoiles, puis de 25 % de 100 000 à 370 000. Le macro F1 progresse plus lentement : +0,016 puis +0,014. Le rappel du red clump stagne. Le clustering à k = 3 ne bouge pas.
+Le CNN entraîné sur 2 % des bons spectres dépasse déjà la forêt entraînée sur 100 % (0,785 contre 0,776). L'erreur du CNN sur Teff descend de 54 K à 27 K entre 2 et 50 %, puis ne bouge plus. La forêt gagne encore entre 50 et 100 %. Le macro F1 du CNN à 100 % (0,865) diffère du run principal (0,848) : la section 6.1 mesure ce bruit des graines.
 
 ### 5.6 Temps de calcul
 
@@ -343,7 +329,7 @@ L'erreur sur Teff baisse de 26 % de 30 000 à 100 000 étoiles, puis de 25 % de 
 | Clustering sur le latent | 125 | 191 |
 | **Total** | **7 206 (2 h)** | |
 
-*Portable avec une RTX 3060 (6 Go), 16 threads, 15 Go de mémoire.* L'expérience prend 3 fois plus de temps qu'à 100 000 étoiles pour 3,7 fois plus d'étoiles. Le CNN domine le temps de calcul.
+*Portable avec une RTX 3060 (6 Go), 16 threads, 15 Go de mémoire.* Le CNN domine le temps de calcul.
 
 ---
 
@@ -379,7 +365,7 @@ Chaque valeur du projet a une raison, listée dans [`docs/choix_parametres.md`](
 ![Sensibilité clustering](report/figures/sens_cluster.png)
 *Figure 10. ARI selon le nombre de composantes et selon k, sur 10 graines.*
 
-Sur 10 graines, l'ARI médian du GMM vaut 0,41 à k = 3. À k = 4, la médiane tombe à 0,10 et le maximum atteint 0,30. Le 0,44 de la version 2 ne se reproduit avec aucune graine.
+Sur 10 graines, l'ARI médian du GMM vaut 0,41 à k = 3. À k = 4, la médiane tombe à 0,10 et le maximum atteint 0,30. Aucune graine ne dépasse 0,30 à k = 4.
 
 ### 6.1 Bruit des graines et meilleurs réglages
 
@@ -479,9 +465,9 @@ Réserves : le test compte 844 étoiles, et toutes viennent du champ Kepler, sur
 
 | | Constat |
 |---|---|
-| **Tient sur les trois versions** | Séparation naines / géantes sans étiquette. Supériorité du CNN en classification. Effet opposé des mauvais spectres sur classification et régression. |
+| **Tient** | Séparation naines / géantes sans étiquette. Supériorité du CNN en classification. Effet opposé des mauvais spectres sur classification et régression. |
 | **Plafonne** | Le CNN à quatre classes confond 42 % du red clump avec la RGB. La cause : les étiquettes du catalogue. Contre l'astérosismologie, le F1 atteint 0,978. |
-| **Ne tient pas** | L'ARI de 0,44 du GMM à k = 4 de la version 2. Sur 10 graines, il ne dépasse pas 0,30. k = 3 reste le choix robuste. |
+| **Fragile** | Le GMM à k = 4. Sur 10 graines, l'ARI ne dépasse pas 0,30. k = 3 reste le choix robuste. |
 | **Règle pratique** | Entraîner la régression sur les spectres bruités seulement avec des étiquettes fiables. Les étiquettes FPARAM donnent 882 K d'erreur. |
 
 ## 9. Limites et travaux futurs
@@ -503,7 +489,7 @@ Travaux futurs, par priorité :
 
 ## 10. Conclusion
 
-Sur 370 000 spectres APOGEE, le spectre seul sépare naines et géantes sans étiquette : un GMM à trois groupes atteint un ARI de 0,41 et place 73 024 des 73 040 naines dans un même groupe. Avec étiquettes, le CNN 1-D atteint un macro F1 de 0,865 sur 3 graines et une erreur de 24,7 K sur Teff. La régression gagne le plus à l'échantillon plus grand. La limite red clump / RGB venait des étiquettes : avec APOKASC-3, un CNN sépare les deux classes avec un F1 de 0,978 et 3 % de contamination.
+Sur 370 000 spectres APOGEE, le spectre seul sépare naines et géantes sans étiquette : un GMM à trois groupes atteint un ARI de 0,41 et place 73 024 des 73 040 naines dans un même groupe. Avec étiquettes, le CNN 1-D atteint un macro F1 de 0,865 sur 3 graines et une erreur de 24,7 K sur Teff. Le CNN entraîné sur 2 % des bons spectres dépasse déjà la forêt entraînée sur 100 %. La limite red clump / RGB venait des étiquettes : avec APOKASC-3, un CNN sépare les deux classes avec un F1 de 0,978 et 3 % de contamination.
 
 ---
 
@@ -523,7 +509,7 @@ Sans `STARS_DATA`, les scripts écrivent dans `data/` à la racine du projet.
 ```bash
 python scripts/01_get_catalogs.py        # catalogues APOGEE, red clump, OCCAM (4,2 Go)
 python scripts/02_select_stars.py        # échantillon, qualité, étiquettes, split
-python scripts/03_download_spectra.py    # spectres, reprise automatique (--seed-from pour réutiliser)
+python scripts/03_download_spectra.py    # spectres, reprise automatique
 python scripts/04_explore.py             # PCA, t-SNE, UMAP
 python scripts/05_baseline.py            # forêt aléatoire
 python scripts/06_train.py --model cnn   # CNN 1-D, reprise automatique

@@ -2,7 +2,7 @@
 
 ## Le problème
 
-Un spectre prétraité compte 7 514 pixels. En float32, 370 000 spectres occupent 11,1 Go. La machine de référence a 15 Go de RAM, dont 10 Go libres. Le code de la version 100 000 étoiles chargeait tout en float32, copiait le jeu d'entraînement pour PyTorch et ajustait la PCA sur la matrice entière. Chacune de ces étapes dépasse la RAM à 370 000 étoiles.
+Un spectre prétraité compte 7 514 pixels. En float32, 370 000 spectres occupent 11,1 Go. La machine de référence a 15 Go de RAM, dont 10 Go libres. Un code direct chargerait tout en float32, copierait le jeu d'entraînement pour PyTorch et ajusterait la PCA sur la matrice entière. Chacune de ces étapes dépasse la RAM à 370 000 étoiles.
 
 ## Les quatre changements
 
@@ -19,8 +19,8 @@ Le flux normalisé vaut entre 0 et 1,5. Près du continuum (1,0), float16 a un p
 
 ## Profondeur des raies
 
-Les réseaux reçoivent 1 − flux. La version 100 000 étoiles faisait ce calcul une fois sur tout le tableau, en place. Ici, `stars.training.depth` le fait sur chaque lot, au moment de la conversion en float32. `predict` et `Batches` l'appliquent tous les deux : les scripts passent X tel quel.
+Les réseaux reçoivent 1 − flux. Faire ce calcul une fois sur tout le tableau demanderait une copie en float32. `stars.training.depth` le fait sur chaque lot, au moment de la conversion en float32. `predict` et `Batches` l'appliquent tous les deux : les scripts passent X tel quel.
 
-## Ce qui ne change pas
+## PCA sur un sous-échantillon
 
-Le split, la graine, les modèles, les hyperparamètres et les métriques restent ceux de la version 100 000 étoiles. Seule la PCA diffère : elle s'ajuste sur un sous-échantillon. Avec 50 000 spectres pour 50 composantes, l'estimation des axes reste stable.
+La PCA s'ajuste sur 50 000 spectres tirés au hasard. Avec 50 000 spectres pour 50 composantes, l'estimation des axes reste stable.

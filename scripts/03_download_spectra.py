@@ -47,7 +47,7 @@ def seed_from(other, cat, flux, err, status, chunk=2000):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--workers", type=int, default=16, help="téléchargements en parallèle")
-    p.add_argument("--seed-from", type=Path, help="dossier de données d'une autre version, avec spectres déjà téléchargés")
+    p.add_argument("--seed-from", type=Path, help="autre dossier de données avec des spectres déjà téléchargés")
     p.add_argument("--retry-missing", action="store_true", help="retenter les étoiles marquées absentes")
     args = p.parse_args()
 

@@ -23,7 +23,7 @@
 \newcommand{\teff}{$T_{\mathrm{eff}}$}
 \newcommand{\logg}{$\log g$}
 
-\title{\textbf{Questions et réponses}\\[4pt]\large Classification d'étoiles APOGEE DR17, version 370\,000 étoiles}
+\title{\textbf{Questions et réponses}\\[4pt]\large Classification d'étoiles APOGEE DR17, 370\,000 étoiles}
 \author{Félix Dubé \and Imran Akki \and Charles-Antoine Fournier \and Youssef Lahrichi \and Bastien Posez}
 \date{Préparation de la présentation, décembre 2026}
 
@@ -43,11 +43,11 @@ Un algorithme retrouve-t-il le type d'une étoile à partir de son seul spectre 
 \Q{Pourquoi APOGEE ?}
 APOGEE DR17 publie 733\,901 spectres infrarouges à haute résolution, avec des paramètres ASPCAP (\teff{}, \logg{}, [M/H]) pour chacun. L'infrarouge traverse la poussière du disque galactique. Les étiquettes existent déjà : nous jugeons les modèles sans annoter à la main.
 
-\Q{Qu'apporte cette version par rapport aux deux précédentes ?}
-3,7 fois plus d'étoiles (370\,000 contre 99\,773) et des tests de sensibilité sur chaque paramètre. Le macro F1 du CNN passe de 0,818 (30\,781 étoiles) à 0,834 (99\,773), puis 0,848 (370\,000). L'erreur sur \teff{} passe de 44,6 à 32,9, puis 24,7\,K.
+\Q{Que gagne-t-on avec plus de données d'entraînement ?}
+De 2\,\% à 100\,\% des bons spectres, le macro F1 du CNN passe de 0,785 à 0,865 et l'erreur sur \teff{} de 54 à 28\,K. L'erreur sur \teff{} plafonne à partir de 50\,\%.
 
 \Q{Qu'est-ce qui ne change pas avec plus de données ?}
-Le rappel du red clump : 56\,\%, 60\,\%, 58\,\%. L'ARI du GMM à 3 groupes : 0,42, 0,42, 0,41. La limite tient à la physique, pas à la taille de l'échantillon.
+Le rappel du red clump reste autour de 58\,\%. La limite vient des étiquettes du catalogue red clump, pas de la taille de l'échantillon.
 
 %=====================================================================
 \section{Données et étiquettes}
@@ -109,8 +109,8 @@ La silhouette est maximale à $k = 3$. Sur 10 graines, l'ARI médian vaut 0,41 �
 \Q{Que trouve le GMM à 3 groupes ?}
 Groupe A : la séquence principale, avec 73\,024 des 73\,040 naines. Groupe B : le haut de la RGB. Groupe C : le red clump et le bas de la RGB, avec 97\,\% du red clump.
 
-\Q{Le 0,44 de la version 100\,000 à $k = 4$ était-il faux ?}
-Il était fragile. Il ne se reproduit avec aucune des 10 graines à 370\,000 étoiles. Un résultat de clustering obtenu avec une seule graine ne suffit pas.
+\Q{Pourquoi pas $k = 4$ ?}
+L'ARI ne dépasse pas 0,30 sur 10 graines, avec une médiane de 0,10. Un résultat de clustering obtenu avec une seule graine ne suffit pas.
 
 \Q{Pourquoi une silhouette si basse (0,28) ?}
 Les étoiles forment un continuum : une étoile évolue sans saut d'une classe à l'autre. Les groupes n'ont pas de frontière nette. Une silhouette basse est attendue.

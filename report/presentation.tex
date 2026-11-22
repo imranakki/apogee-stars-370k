@@ -20,7 +20,7 @@
 \newcommand{\bignum}[1]{{\usebeamercolor[fg]{example text}\Huge\bfseries #1}}
 
 \title{Classer les étoiles par leur seul spectre}
-\subtitle{APOGEE DR17, version 370\,000 étoiles}
+\subtitle{APOGEE DR17, 370\,000 étoiles}
 \author{Félix Dubé \and Imran Akki \and Charles-Antoine Fournier \and Youssef Lahrichi \and Bastien Posez}
 \institute{GIF-4101 / GIF-7005 / GIF-7015 \quad Université Laval}
 \date{Décembre 2026}
@@ -35,9 +35,9 @@
 \end{center}
 \vspace{1em}
 \begin{itemize}
-  \item Version 1 : 30\,781 étoiles. Version 2 : 99\,773 étoiles.
-  \item Version 3 : \alert{370\,000 étoiles}, même protocole.
-  \item Question de cette version : quels résultats tiennent quand l'échantillon grandit ?
+  \item \alert{370\,000 étoiles} APOGEE DR17.
+  \item Clustering sans étiquettes, CNN 1-D contre forêt, impact de la qualité.
+  \item Chaque paramètre testé, red clump / RGB jugé par l'astérosismologie.
 \end{itemize}
 \end{frame}
 
@@ -46,7 +46,7 @@
 \column{0.32\textwidth}
 \bignum{246\,572}\\ bons spectres\\[0.8em]
 {\usebeamercolor[fg]{alerted text}\Huge\bfseries 123\,428}\\ mauvais spectres\\[0.8em]
-\small 99\,773 spectres repris de la version 2. 270\,312 téléchargés, dont 30\,315 depuis le miroir \texttt{dr17.sdss.org}.
+\small 370\,000 spectres reçus sur 370\,085 demandés. Une partie servie par le miroir \texttt{dr17.sdss.org}.
 \column{0.66\textwidth}
 \includegraphics[width=\linewidth]{mean_spectra_zoom.png}\\
 \small Spectre moyen par classe sur 130\,Å.
@@ -103,8 +103,8 @@ Chaque modèle s'entraîne sur les bons spectres (172\,512), puis sur tous (258\
 \includegraphics[width=\linewidth]{kiel_gmm.png}
 \column{0.46\textwidth}
 \bignum{73\,024 / 73\,040}\\ naines dans le groupe A\\[0.8em]
-ARI 0,41 à $k = 3$ (0,42 en v2)\\[0.5em]
-\alert{ARI 0,10 à $k = 4$} (0,44 en v2) : le quatrième groupe coupe les naines en deux.
+ARI 0,41 à $k = 3$\\[0.5em]
+\alert{ARI 0,10 à $k = 4$} : le quatrième groupe coupe les naines en deux.
 \end{columns}
 \end{frame}
 
@@ -240,22 +240,20 @@ CNN affiné & catalogue puis sismologie & $\mathbf{0{,}978 \pm 0{,}003}$ & \text
 \end{itemize}
 \end{frame}
 
-\begin{frame}{30\,000, 100\,000, 370\,000 étoiles}
+\begin{frame}{Effet de la taille d'entraînement}
 \centering
-\begin{tabular}{lrrr}
+\begin{tabular}{rrrr}
 \toprule
-Mesure (\texttt{test\_good}) & 30\,781 & 99\,773 & 370\,000 \\
+Fraction des bons spectres & Macro F1, CNN & Macro F1, forêt & \teff{} CNN (K) \\
 \midrule
-Macro F1, CNN & 0,818 & 0,834 & \textbf{0,848} \\
-Macro F1, forêt & 0,696 & 0,751 & \textbf{0,776} \\
-Erreur \teff{}, CNN (K) & 44,6 & 32,9 & \textbf{24,7} \\
-Erreur $\log g$, CNN (dex) & 0,083 & 0,069 & \textbf{0,050} \\
-Rappel red clump & 56\,\% & 60\,\% & 58\,\% \\
-ARI, GMM, $k = 3$ & 0,42 & 0,42 & 0,41 \\
+2\,\% (3\,450) & 0,785 & 0,635 & 53,9 \\
+10\,\% (17\,251) & 0,819 & 0,715 & 46,5 \\
+50\,\% (86\,256) & 0,856 & 0,766 & 26,9 \\
+100\,\% (172\,512) & \textbf{0,865} & \textbf{0,776} & 27,9 \\
 \bottomrule
 \end{tabular}\\[1em]
 \raggedright
-La régression gagne le plus. La limite red clump / RGB demeure.
+Le CNN sur 2\,\% bat la forêt sur 100\,\%. \teff{} plafonne à partir de 50\,\%.
 \end{frame}
 
 \begin{frame}{Temps de calcul}

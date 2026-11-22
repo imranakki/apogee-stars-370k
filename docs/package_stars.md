@@ -23,7 +23,7 @@ Code partagé par les scripts. Un script contient l'enchaînement d'une étape, 
 Utilisez cette fonction dans un notebook pour vos propres analyses :
 
 ```python
-import sys; sys.path.insert(0, "/chemin/vers/apogee-stars")
+import sys; sys.path.insert(0, "/chemin/vers/apogee-stars-370k")
 from stars import spectra
 X, cat = spectra.load_dataset()
 ```

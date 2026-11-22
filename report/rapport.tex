@@ -24,7 +24,7 @@
 \newcommand{\mh}{[M/H]}
 
 \title{\textbf{Classification d'étoiles à partir des spectres APOGEE DR17}\\[4pt]
-\large Version 370\,000 étoiles}
+\large 370\,000 étoiles}
 \author{Félix Dubé \and Imran Akki \and Charles-Antoine Fournier \and Youssef Lahrichi \and Bastien Posez}
 \date{Projet de session, GIF-4101 / GIF-7005 / GIF-7015\\Université Laval, décembre 2026}
 
@@ -32,7 +32,7 @@
 \maketitle
 
 \begin{abstract}
-\noindent Nous reprenons notre étude de classification d'étoiles APOGEE DR17 sur 370\,000 spectres, 3,7 fois plus que la version précédente (99\,773) et 12 fois plus que la première (30\,781). Le protocole ne change pas. Le code change pour tenir dans 15\,Go de mémoire : spectres stockés en float16, lots lus à la volée, PCA ajustée sur un sous-échantillon. Avec étiquettes, le CNN 1-D entraîné sur les bons spectres atteint un macro F1 de 0,848 et une erreur de 24,7\,K sur \teff{}, contre 0,834 et 32,9\,K à 100\,000 étoiles. Entraîné sur tous les spectres, il atteint un macro F1 de 0,857. Sans étiquettes, un mélange gaussien à trois groupes retrouve les classes évolutives avec un ARI de 0,41, comme avant. À quatre groupes, l'ARI tombe à 0,10 : le gain observé à 100\,000 étoiles ne se confirme pas. Les mauvais spectres aident toujours la classification et dégradent toujours la régression sur les bons spectres (\teff{} de 25 à 45\,K). La limite red clump / RGB demeure : 58\,\% de rappel pour le red clump. La cause tient aux étiquettes : le catalogue red clump manque 45\,\% des vraies étoiles du red clump. Avec les étiquettes d'astérosismologie d'APOKASC-3, un CNN atteint un F1 de 0,978 sur la séparation red clump / RGB. Des tests de sensibilité justifient chaque paramètre. Choisis sur la validation, les meilleurs réglages portent le macro F1 du CNN à $0{,}865 \pm 0{,}000$ sur 3 graines, contre $0{,}852 \pm 0{,}010$ pour la référence, et celui de la forêt de 0,776 à 0,803.
+\noindent Nous classons 370\,000 étoiles APOGEE DR17 à partir de leur seul spectre infrarouge. Le code tient dans 15\,Go de mémoire : spectres stockés en float16, lots lus à la volée, PCA ajustée sur un sous-échantillon. Avec étiquettes, le CNN 1-D entraîné sur les bons spectres atteint un macro F1 de 0,848 et une erreur de 24,7\,K sur \teff{}. Entraîné sur tous les spectres, il atteint un macro F1 de 0,857. Sans étiquettes, un mélange gaussien à trois groupes retrouve les classes évolutives avec un ARI de 0,41. À quatre groupes, l'ARI tombe à 0,10. Les mauvais spectres aident la classification et dégradent la régression sur les bons spectres (\teff{} de 25 à 45\,K). La limite red clump / RGB demeure : 58\,\% de rappel pour le red clump. La cause tient aux étiquettes : le catalogue red clump manque 45\,\% des vraies étoiles du red clump. Avec les étiquettes d'astérosismologie d'APOKASC-3, un CNN atteint un F1 de 0,978 sur la séparation red clump / RGB. Des tests de sensibilité justifient chaque paramètre. Choisis sur la validation, les meilleurs réglages portent le macro F1 du CNN à $0{,}865 \pm 0{,}000$ sur 3 graines, contre $0{,}852 \pm 0{,}010$ pour la référence, et celui de la forêt de 0,776 à 0,803.
 \end{abstract}
 
 \tableofcontents
@@ -45,14 +45,7 @@ APOGEE DR17 publie les spectres infrarouges de 657\,000 étoiles \cite{dr17,maje
 
 Garcia-Dias et al.\ \cite{garciadias2018} ont montré que K-means sépare naines, sous-géantes, red clump et branche des géantes rouges dans APOGEE. Leur résultat dépendait de l'initialisation.
 
-Ce rapport est la troisième version du projet :
-\begin{enumerate}
-  \item Version 1 : catalogue allégé \texttt{allStarLite}, 30\,781 étoiles.
-  \item Version 2 : catalogue complet \texttt{allStar}, 99\,773 étoiles, étiquettes enrichies (FPARAM, [Mg/Fe], distances Gaia).
-  \item Version 3, ce rapport : même catalogue et mêmes étiquettes, 370\,000 étoiles.
-\end{enumerate}
-
-Nous cherchons à savoir quels résultats tiennent quand l'échantillon grandit, et lesquels plafonnent.
+Nous testons ce résultat sur 370\,000 étoiles. Nous mesurons aussi l'effet de la taille d'entraînement et de chaque paramètre du projet.
 
 %=====================================================================
 \section{Données}
@@ -63,28 +56,13 @@ APOGEE observe en bande H (15\,150 à 16\,940\,Å) à une résolution $R \approx
 
 \subsection{Échantillon et qualité}
 
-Nous excluons le télescope de 1\,m, les doublons, les standards telluriques et les spectres de SNR inférieur à 5. Nous tirons au hasard (graine 42) 246\,200 bons et 123\,100 mauvais spectres, le même ratio 2 pour 1 qu'avant, et nous ajoutons les 785 membres d'amas ouverts OCCAM \cite{occam}. Le catalogue final compte 370\,085 étoiles.
+Nous excluons le télescope de 1\,m, les doublons, les standards telluriques et les spectres de SNR inférieur à 5. Nous tirons au hasard (graine 42) 246\,200 bons et 123\,100 mauvais spectres, soit 2 bons pour 1 mauvais, et nous ajoutons les 785 membres d'amas ouverts OCCAM \cite{occam}. Le catalogue final compte 370\,085 étoiles.
 
 Un bon spectre vérifie quatre critères : SNR $\geq 70$, \texttt{STARFLAG} $= 0$, pas de \texttt{STAR\_BAD} dans \texttt{ASPCAPFLAG}, \teff{} et \logg{} publiés. Le SNR médian vaut 168 pour les bons et 103 pour les mauvais. 69\,\% des mauvais spectres ont un SNR $\geq 70$ : un drapeau les écarte, pas le bruit.
 
-\begin{table}[H]
-\centering
-\begin{tabular}{lrrr}
-\toprule
- & Version 1 & Version 2 & Version 3 \\
-\midrule
-Étoiles & 30\,781 & 99\,773 & 370\,000 \\
-Bons spectres & 20\,000 env. & 66\,372 & 246\,572 \\
-Mauvais spectres & 10\,000 env. & 33\,401 & 123\,428 \\
-Étiquettes FPARAM & 0 & 2\,815 & 10\,361 \\
-\bottomrule
-\end{tabular}
-\caption{Taille des trois versions.}
-\end{table}
-
 \subsection{Téléchargement}
 
-Les 99\,773 spectres de la version 2 sont copiés sans retéléchargement, en associant les lignes par \texttt{APOGEE\_ID}, \texttt{TELESCOPE} et \texttt{FIELD}. Il reste 270\,312 spectres à télécharger. Le serveur \texttt{data.sdss.org} a cessé de répondre après 240\,000 spectres. Le miroir officiel \texttt{dr17.sdss.org} a servi les 30\,315 derniers. Au total, le serveur fournit 370\,000 des 370\,085 spectres demandés : 57 étoiles n'ont pas de spectre publié et 28 échecs réseau persistent.
+Le serveur \texttt{data.sdss.org} a cessé de répondre en cours de téléchargement. Le miroir officiel \texttt{dr17.sdss.org} a servi les 30\,315 derniers. Au total, le serveur fournit 370\,000 des 370\,085 spectres demandés : 57 étoiles n'ont pas de spectre publié et 28 échecs réseau persistent.
 
 \subsection{Étiquettes}
 
@@ -101,13 +79,13 @@ Nous retirons les 1\,061 pixels des trous entre détecteurs (il reste 7\,514 pix
 %=====================================================================
 \section{Tenir 370\,000 spectres en mémoire}
 
-En float32, 370\,000 spectres de 7\,514 pixels occupent 11,1\,Go. La machine a 15\,Go de mémoire, dont 10\,Go libres. Le code de la version 2 chargeait tout en float32, copiait le jeu d'entraînement pour PyTorch et ajustait la PCA sur la matrice entière. Nous avons fait quatre changements.
+En float32, 370\,000 spectres de 7\,514 pixels occupent 11,1\,Go. La machine a 15\,Go de mémoire, dont 10\,Go libres. Un code direct chargerait tout en float32, copierait le jeu d'entraînement pour PyTorch et ajusterait la PCA sur la matrice entière. Nous faisons quatre choix.
 
 \begin{table}[H]
 \centering
 \begin{tabular}{lll}
 \toprule
-Changement & Avant & Après \\
+Choix & Approche directe & Ce code \\
 \midrule
 Spectres stockés en float16 & 11,1\,Go & 5,6\,Go \\
 Lots lus à la volée, convertis en float32 & copie de 3,9\,Go & un lot \\
@@ -115,10 +93,10 @@ PCA ajustée sur 50\,000 spectres, projection par morceaux & 11\,Go & 1,5\,Go \\
 HDBSCAN sur 50\,000 étoiles tirées au hasard & toutes les étoiles & 50\,000 \\
 \bottomrule
 \end{tabular}
-\caption{Changements de code pour la version 370\,000 étoiles.}
+\caption{Choix de code pour tenir 370\,000 spectres en mémoire.}
 \end{table}
 
-Float16 suffit : près du continuum, son pas vaut 0,0005, vingt fois moins que le bruit d'un bon spectre (environ 0,01 par pixel). Les modèles, les hyperparamètres, le découpage et les métriques restent ceux de la version 2.
+Float16 suffit : près du continuum, son pas vaut 0,0005, vingt fois moins que le bruit d'un bon spectre (environ 0,01 par pixel).
 
 %=====================================================================
 \section{Méthodes}
@@ -144,7 +122,7 @@ Float16 suffit : près du continuum, son pas vaut 0,0005, vingt fois moins que l
 \label{fig:tsne}
 \end{figure}
 
-Le t-SNE (figure~\ref{fig:tsne}) montre la même structure qu'à 100\,000 étoiles. Naines et géantes forment deux régions séparées, reliées par les sous-géantes. Le red clump reste mêlé à la RGB. Les mauvais spectres se mêlent aux bons.
+Le t-SNE (figure~\ref{fig:tsne}) montre deux régions. Naines et géantes forment deux régions séparées, reliées par les sous-géantes. Le red clump reste mêlé à la RGB. Les mauvais spectres se mêlent aux bons.
 
 \begin{figure}[H]
 \centering
@@ -198,7 +176,7 @@ C : red clump et bas de la RGB & 13 & 2\,342 & 74\,385 & 22\,267 \\
 \label{fig:kiel}
 \end{figure}
 
-À $k = 4$, l'ARI tombe à 0,10. Le quatrième groupe coupe les naines en deux, et l'un des morceaux absorbe 18\,753 étoiles du red clump et 62\,668 RGB. La version 2 donnait 0,44 à $k = 4$, la version 1 donnait 0,09. Le résultat à quatre groupes dépend donc de l'échantillon, et la version 2 avait trouvé une solution favorable.
+À $k = 4$, l'ARI tombe à 0,10. Le quatrième groupe coupe les naines en deux, et l'un des morceaux absorbe 18\,753 étoiles du red clump et 62\,668 RGB. Sur 10 graines, l'ARI à $k = 4$ ne dépasse pas 0,30 (section~\ref{sec:sensibilite}) : ce choix reste fragile.
 
 \begin{figure}[H]
 \centering
@@ -229,7 +207,7 @@ CNN 1-D & tous & \textbf{0,918} & \textbf{0,857} & 45,1 & 0,081 & 0,026 \\
 \label{tab:sup}
 \end{table}
 
-Le CNN entraîné sur les bons spectres donne les plus faibles erreurs sur \teff{}, \logg{} et \mh{}. Le CNN entraîné sur tous les spectres donne le meilleur macro F1 (tableau~\ref{tab:sup}). À 100\,000 étoiles, la forêt battait le CNN sur \teff{}. À 370\,000, le CNN la dépasse : 24,7\,K contre 26,3\,K.
+Le CNN entraîné sur les bons spectres donne les plus faibles erreurs sur \teff{}, \logg{} et \mh{}. Le CNN entraîné sur tous les spectres donne le meilleur macro F1 (tableau~\ref{tab:sup}). Le CNN bat aussi la forêt sur \teff{} : 24,7\,K contre 26,3\,K.
 
 \begin{figure}[H]
 \centering
@@ -238,7 +216,7 @@ Le CNN entraîné sur les bons spectres donne les plus faibles erreurs sur \teff
 \label{fig:confusion}
 \end{figure}
 
-Le CNN reconnaît 98\,\% des naines, 85\,\% des sous-géantes et 95\,\% des RGB (figure~\ref{fig:confusion}). Le red clump plafonne à 58\,\% : 42\,\% sont classées RGB. Les sous-géantes progressent le plus : 78\,\% de rappel à 100\,000 étoiles, 85\,\% ici.
+Le CNN reconnaît 98\,\% des naines, 85\,\% des sous-géantes et 95\,\% des RGB (figure~\ref{fig:confusion}). Le red clump plafonne à 58\,\% : 42\,\% sont classées RGB.
 
 \subsection{Impact de la qualité des données}
 
@@ -286,29 +264,29 @@ FPARAM & mauvaise & 1\,504 & 882 & 514 & 0,541 / 0,412 \\
 \label{tab:source}
 \end{table}
 
-\subsection{Effet de la taille de l'échantillon}
+\subsection{Effet de la taille d'entraînement}
+
+Le test de sensibilité \texttt{size} entraîne chaque modèle sur une fraction des 172\,512 bons spectres d'entraînement (section~\ref{sec:sensibilite}).
 
 \begin{table}[H]
 \centering
-\begin{tabular}{lrrr}
+\begin{tabular}{rrrrrr}
 \toprule
-Mesure (\texttt{test\_good}, entraînement sur les bons) & 30\,781 & 99\,773 & 370\,000 \\
+Fraction & Étoiles & Macro F1, CNN & Macro F1, forêt & \teff{} CNN (K) & \teff{} forêt (K) \\
 \midrule
-Macro F1, CNN & 0,818 & 0,834 & \textbf{0,848} \\
-Macro F1, forêt & 0,696 & 0,751 & \textbf{0,776} \\
-Erreur \teff{}, CNN (K) & 44,6 & 32,9 & \textbf{24,7} \\
-Erreur \logg{}, CNN (dex) & 0,083 & 0,069 & \textbf{0,050} \\
-Erreur \mh{}, CNN (dex) & 0,032 & 0,025 & \textbf{0,021} \\
-Rappel du red clump, CNN & 56\,\% & 60\,\% & 58\,\% \\
-ARI, GMM sur PCA à $k = 3$ & 0,42 & 0,42 & 0,41 \\
-ARI, GMM sur PCA à $k = 4$ & 0,09 & 0,44 & 0,10 \\
+2\,\% & 3\,450 & 0,785 & 0,635 & 53,9 & 47,2 \\
+5\,\% & 8\,626 & 0,817 & 0,689 & 45,9 & 39,0 \\
+10\,\% & 17\,251 & 0,819 & 0,715 & 46,5 & 35,1 \\
+25\,\% & 43\,128 & 0,833 & 0,741 & 34,4 & 30,2 \\
+50\,\% & 86\,256 & 0,856 & 0,766 & 26,9 & 28,2 \\
+100\,\% & 172\,512 & \textbf{0,865} & \textbf{0,776} & 27,9 & \textbf{26,3} \\
 \bottomrule
 \end{tabular}
-\caption{Les trois versions du projet.}
+\caption{Effet de la taille d'entraînement sur \texttt{test\_good}.}
 \label{tab:size}
 \end{table}
 
-La régression profite le plus de l'échantillon (tableau~\ref{tab:size}). L'erreur du CNN sur \teff{} baisse de 26\,\% de 30\,000 à 100\,000 étoiles, puis de 25\,\% de 100\,000 à 370\,000. Le macro F1 progresse plus lentement : +0,016 puis +0,014. Le rappel du red clump stagne autour de 58\,\%. Le clustering à $k = 3$ ne bouge pas.
+Le CNN entraîné sur 2\,\% des bons spectres dépasse déjà la forêt entraînée sur 100\,\%. L'erreur du CNN sur \teff{} descend de 54\,K à 27\,K entre 2 et 50\,\%, puis ne bouge plus. La forêt gagne encore entre 50 et 100\,\%.
 
 \subsection{Temps de calcul}
 
@@ -318,7 +296,7 @@ La régression profite le plus de l'échantillon (tableau~\ref{tab:size}). L'err
 \toprule
 Étape & Bons spectres (s) & Tous les spectres (s) \\
 \midrule
-Téléchargement des 270\,312 spectres manquants & \multicolumn{2}{c}{environ 21\,000 (une fois)} \\
+Téléchargement de 270\,312 spectres & \multicolumn{2}{c}{environ 21\,000 (une fois)} \\
 PCA et t-SNE & \multicolumn{2}{c}{539 (une fois)} \\
 Forêt aléatoire, classes & 99 & 131 \\
 Forêt aléatoire, régression & 308 & 486 \\
@@ -334,7 +312,7 @@ Total de l'expérience & \multicolumn{2}{c}{7\,206 (2 heures)} \\
 \caption{Temps mesurés sur un portable avec une RTX 3060 (6\,Go), 16 threads et 15\,Go de mémoire.}
 \end{table}
 
-L'expérience prend 2 heures, contre 40 minutes à 100\,000 étoiles : 3 fois plus long pour 3,7 fois plus d'étoiles. Le CNN domine le temps de calcul.
+L'expérience prend 2 heures. Le CNN domine le temps de calcul.
 
 %=====================================================================
 \section{Choix des paramètres et tests de sensibilité}
@@ -403,7 +381,7 @@ Forêt & 300 arbres, 50 axes & le gain s'arrête vers quelques centaines d'arbre
 \label{fig:sens_cluster}
 \end{figure}
 
-Le GMM à $k = 3$ sur 10 composantes atteint l'ARI le plus haut (0,41). Le résultat dépend du nombre d'axes : 0,33 à 5 axes, $-0,03$ à 20, 0,40 à 30. Sur 10 graines, l'ARI médian vaut 0,41 à $k = 3$, avec un minimum de 0,08. À $k = 4$, la médiane tombe à 0,10 et le maximum atteint 0,30 : le 0,44 de la version 2 ne se reproduit avec aucune graine. K-means reste sous 0,09 en médiane jusqu'à $k = 7$.
+Le GMM à $k = 3$ sur 10 composantes atteint l'ARI le plus haut (0,41). Le résultat dépend du nombre d'axes : 0,33 à 5 axes, $-0,03$ à 20, 0,40 à 30. Sur 10 graines, l'ARI médian vaut 0,41 à $k = 3$, avec un minimum de 0,08. À $k = 4$, la médiane tombe à 0,10 et le maximum atteint 0,30. K-means reste sous 0,09 en médiane jusqu'à $k = 7$.
 
 \subsection{Le bruit des graines}
 
@@ -537,13 +515,13 @@ Deux réserves. Le test compte 844 étoiles : une erreur déplace le rappel de 0
 %=====================================================================
 \section{Discussion}
 
-\paragraph{Ce qui tient.} Trois résultats tiennent sur les trois versions : la séparation naines / géantes sans étiquette, la supériorité du CNN pour la classification, et l'effet opposé des mauvais spectres sur la classification et la régression.
+\paragraph{Ce qui tient.} Trois résultats tiennent : la séparation naines / géantes sans étiquette, la supériorité du CNN pour la classification, et l'effet opposé des mauvais spectres sur la classification et la régression.
 
 \paragraph{Ce qui plafonne.} Le CNN à quatre classes confond 42\,\% du red clump avec la RGB. La différence entre ces classes tient au cœur de l'étoile et laisse peu de traces dans le spectre de surface. Plus de données n'y change rien. Contre les étiquettes du catalogue, un classifieur dédié plafonne à 0,57 de précision. Contre l'astérosismologie, le même modèle atteint un F1 de 0,93, et 0,978 une fois affiné sur 5\,284 étoiles APOKASC-3 (section~\ref{sec:rcrgb}). La limite venait des étiquettes, pas du spectre.
 
-\paragraph{Ce qui ne tient pas.} L'ARI de 0,44 du GMM à $k = 4$ en version 2 ne se reproduit pas. Avec 246\,572 bons spectres, le GMM coupe les naines en deux plutôt que de séparer le red clump. Sur 10 graines, l'ARI à $k = 4$ ne dépasse pas 0,30. Le choix $k = 4$ reste fragile, et $k = 3$ reste le choix robuste.
+\paragraph{Ce qui reste fragile.} Le GMM à $k = 4$. Avec 246\,572 bons spectres, le GMM coupe les naines en deux plutôt que de séparer le red clump. Sur 10 graines, l'ARI à $k = 4$ ne dépasse pas 0,30. Le choix $k = 4$ reste fragile, et $k = 3$ reste le choix robuste.
 
-\paragraph{Les mauvais spectres.} La règle pratique de la version 2 tient : entraîner la régression sur les spectres bruités seulement avec des étiquettes fiables. Les étiquettes FPARAM donnent 882\,K d'erreur.
+\paragraph{Les mauvais spectres.} Règle pratique : entraîner la régression sur les spectres bruités seulement avec des étiquettes fiables. Les étiquettes FPARAM donnent 882\,K d'erreur.
 
 %=====================================================================
 \section{Limites et travaux futurs}
@@ -568,12 +546,12 @@ Travaux futurs, par ordre de priorité :
 %=====================================================================
 \section{Conclusion}
 
-Sur 370\,000 spectres APOGEE, le spectre seul sépare naines et géantes sans étiquette : un GMM à trois groupes atteint un ARI de 0,41 et place 73\,024 des 73\,040 naines dans un même groupe. Avec étiquettes, le CNN 1-D atteint un macro F1 de 0,857 et une erreur de 24,7\,K sur \teff{}. La régression gagne le plus à l'échantillon plus grand. Les tests de sensibilité justifient nos valeurs de référence, avec deux corrections : 10 composantes PCA pour la forêt au lieu de 50, et une part de mauvais spectres pour le CNN de classification. Ces réglages, choisis sur la validation, portent le macro F1 du CNN à 0,865 sur 3 graines. La limite red clump / RGB venait des étiquettes : le catalogue red clump manque 45\,\% des vraies étoiles du red clump. Avec les étiquettes d'astérosismologie d'APOKASC-3, un CNN sépare red clump et RGB avec un F1 de 0,978 et 3\,\% de contamination. Le bruit des étiquettes des mauvais spectres demeure.
+Sur 370\,000 spectres APOGEE, le spectre seul sépare naines et géantes sans étiquette : un GMM à trois groupes atteint un ARI de 0,41 et place 73\,024 des 73\,040 naines dans un même groupe. Avec étiquettes, le CNN 1-D atteint un macro F1 de 0,857 et une erreur de 24,7\,K sur \teff{}. Le CNN entraîné sur 2\,\% des bons spectres dépasse déjà la forêt entraînée sur 100\,\%. Les tests de sensibilité justifient nos valeurs de référence, avec deux corrections : 10 composantes PCA pour la forêt au lieu de 50, et une part de mauvais spectres pour le CNN de classification. Ces réglages, choisis sur la validation, portent le macro F1 du CNN à 0,865 sur 3 graines. La limite red clump / RGB venait des étiquettes : le catalogue red clump manque 45\,\% des vraies étoiles du red clump. Avec les étiquettes d'astérosismologie d'APOKASC-3, un CNN sépare red clump et RGB avec un F1 de 0,978 et 3\,\% de contamination. Le bruit des étiquettes des mauvais spectres demeure.
 
 \section*{Reproductibilité}
 \addcontentsline{toc}{section}{Reproductibilité}
 
-Le code se trouve dans le dépôt \url{https://github.com/imranakki/apogee-stars-370k}. Les versions précédentes restent dans \url{https://github.com/imranakki/apogee-stars} et \url{https://github.com/imranakki/apogee-stars-full}.
+Le code se trouve dans le dépôt \url{https://github.com/imranakki/apogee-stars-370k}.
 
 \begin{lstlisting}
 export STARS_DATA=/chemin/vers/un/disque/avec/60Go
