@@ -20,6 +20,7 @@ Un algorithme regroupe-t-il des étoiles en classes physiques à partir de leur 
 | `10_label_source.py` | erreurs par origine d'étiquette | `label_source.csv` | [10](10_label_source.md) |
 | `11_sensitivity.py` | tests de sensibilité, un paramètre à la fois | `sensitivity/*.csv` | [choix des paramètres](choix_parametres.md) |
 | `12_best.py` | meilleurs réglages sur la validation, 3 graines par CNN | `best/selection.json`, `best/final.csv` | [choix des paramètres](choix_parametres.md) |
+| `13_rc_rgb.py` | classifieur binaire red clump / RGB, 4 modèles | `rc_rgb/results.csv` | rapport, section red clump / RGB |
 | `run_quality_experiment.sh` | lance l'expérience qualité complète | tous les runs | [qualité](experience_qualite.md) |
 
 Les définitions de qualité, d'étiquettes et de split sont dans [donnees.md](donnees.md). Le code partagé est décrit dans [package_stars.md](package_stars.md). Les choix qui font tenir 370 000 spectres dans 15 Go de RAM sont dans [memoire.md](memoire.md).

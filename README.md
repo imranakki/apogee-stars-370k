@@ -88,6 +88,7 @@ python scripts/09_quality_by_snr.py      # performance par tranche de SNR
 python scripts/10_label_source.py        # erreurs par origine d'étiquette
 python scripts/11_sensitivity.py cluster_dims cluster_k rf_trees rf_pca size epochs snr badfrac lr   # environ 8 h
 python scripts/12_best.py                # meilleurs réglages, 3 graines, environ 4 h
+python scripts/13_rc_rgb.py              # classifieur red clump / RGB, environ 40 min
 python report/make_sensitivity_figures.py
 ```
 
