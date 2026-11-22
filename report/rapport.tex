@@ -32,7 +32,7 @@
 \maketitle
 
 \begin{abstract}
-\noindent Nous reprenons notre étude de classification d'étoiles APOGEE DR17 sur 370\,000 spectres, 3,7 fois plus que la version précédente (99\,773) et 12 fois plus que la première (30\,781). Le protocole ne change pas. Le code change pour tenir dans 15\,Go de mémoire : spectres stockés en float16, lots lus à la volée, PCA ajustée sur un sous-échantillon. Avec étiquettes, le CNN 1-D entraîné sur les bons spectres atteint un macro F1 de 0,848 et une erreur de 24,7\,K sur \teff{}, contre 0,834 et 32,9\,K à 100\,000 étoiles. Entraîné sur tous les spectres, il atteint un macro F1 de 0,857. Sans étiquettes, un mélange gaussien à trois groupes retrouve les classes évolutives avec un ARI de 0,41, comme avant. À quatre groupes, l'ARI tombe à 0,10 : le gain observé à 100\,000 étoiles ne se confirme pas. Les mauvais spectres aident toujours la classification et dégradent toujours la régression sur les bons spectres (\teff{} de 25 à 45\,K). La limite red clump / RGB demeure : 58\,\% de rappel pour le red clump. Un classifieur binaire dédié porte ce rappel à 87\,\%, avec une précision plafonnée à 0,57 par les étiquettes. Des tests de sensibilité justifient chaque paramètre. Choisis sur la validation, les meilleurs réglages portent le macro F1 du CNN à $0{,}865 \pm 0{,}000$ sur 3 graines, contre $0{,}852 \pm 0{,}010$ pour la référence, et celui de la forêt de 0,776 à 0,803.
+\noindent Nous reprenons notre étude de classification d'étoiles APOGEE DR17 sur 370\,000 spectres, 3,7 fois plus que la version précédente (99\,773) et 12 fois plus que la première (30\,781). Le protocole ne change pas. Le code change pour tenir dans 15\,Go de mémoire : spectres stockés en float16, lots lus à la volée, PCA ajustée sur un sous-échantillon. Avec étiquettes, le CNN 1-D entraîné sur les bons spectres atteint un macro F1 de 0,848 et une erreur de 24,7\,K sur \teff{}, contre 0,834 et 32,9\,K à 100\,000 étoiles. Entraîné sur tous les spectres, il atteint un macro F1 de 0,857. Sans étiquettes, un mélange gaussien à trois groupes retrouve les classes évolutives avec un ARI de 0,41, comme avant. À quatre groupes, l'ARI tombe à 0,10 : le gain observé à 100\,000 étoiles ne se confirme pas. Les mauvais spectres aident toujours la classification et dégradent toujours la régression sur les bons spectres (\teff{} de 25 à 45\,K). La limite red clump / RGB demeure : 58\,\% de rappel pour le red clump. La cause tient aux étiquettes : le catalogue red clump manque 45\,\% des vraies étoiles du red clump. Avec les étiquettes d'astérosismologie d'APOKASC-3, un CNN atteint un F1 de 0,978 sur la séparation red clump / RGB. Des tests de sensibilité justifient chaque paramètre. Choisis sur la validation, les meilleurs réglages portent le macro F1 du CNN à $0{,}865 \pm 0{,}000$ sur 3 graines, contre $0{,}852 \pm 0{,}010$ pour la référence, et celui de la forêt de 0,776 à 0,803.
 \end{abstract}
 
 \tableofcontents
@@ -489,12 +489,57 @@ Le classifieur dédié retrouve 87\,\% du red clump, contre 58\,\% pour le CNN �
 
 La précision plafonne à 0,57 pour tous les modèles. Sur 100 étoiles classées red clump, 43 portent l'étiquette RGB. [C/Fe] et [N/Fe] n'y changent rien. Ce plafond commun vient des étiquettes. Le catalogue red clump \cite{bovy2014} choisit ses étoiles par des coupes en \teff{}, $\log g$ et métallicité, réglées pour la pureté. Une étoile du red clump hors de ces coupes reçoit l'étiquette RGB. Aucun modèle ne dépasse alors la qualité des étiquettes. Ting, Hawkins et Rix \cite{ting2018} atteignent 3\,\% de contamination sur des spectres APOGEE avec des étiquettes d'astérosismologie. Le spectre contient l'information. Nos étiquettes ne la mesurent pas.
 
+\subsection{Étiquettes d'astérosismologie : APOKASC-3}
+
+APOKASC-3 \cite{pinsonneault2025} donne l'état évolutif de 15\,808 géantes du champ Kepler. Les oscillations mesurées par Kepler révèlent le cœur de l'étoile : l'écart de période des modes mixtes sépare un cœur d'hélium inerte (RGB) d'un cœur qui brûle l'hélium (red clump). Nous téléchargeons la table 4 depuis VizieR (J/ApJS/276/69) et la joignons sur l'identifiant 2MASS. 10\,430 de ces étoiles figurent dans nos 370\,000 spectres. Nous gardons les 7\,494 étoiles dont l'état vient de l'astérosismologie : les états spectroscopiques d'APOKASC-3 viennent des spectres APOGEE et rendraient le test circulaire.
+
+\begin{table}[H]
+\centering
+\caption{Étiquette du catalogue red clump contre état d'astérosismologie, 7\,494 géantes APOKASC-3.}
+\label{tab:apokasc_cross}
+\begin{tabular}{lrr}
+\toprule
+Étiquette du catalogue & Red clump (sismologie) & RGB (sismologie) \\
+\midrule
+Red clump & 1\,722 & 157 \\
+RGB & \textbf{1\,434} & 4\,181 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Le catalogue a raison 92 fois sur 100 quand il dit red clump. Il manque 45\,\% des vraies étoiles du red clump et les étiquette RGB (tableau~\ref{tab:apokasc_cross}). Ces étoiles expliquent le plafond de précision de la section précédente.
+
+Le test réunit les géantes à bon spectre du split test dotées d'un état d'astérosismologie : 844 étoiles, dont 339 du red clump. Le seuil de chaque modèle maximise le F1 sur la validation d'astérosismologie.
+
+\begin{table}[H]
+\centering
+\caption{Red clump contre RGB jugé par l'astérosismologie, 844 géantes de test. CNN : moyenne et écart type sur 3 graines.}
+\label{tab:apokasc}
+\small
+\begin{tabular}{llrrrr}
+\toprule
+Modèle & Étiquettes d'entraînement & F1 red clump & Rappel & Précision & AUC \\
+\midrule
+Catalogue red clump & aucune & 0,675 & 0,53 & 0,92 & 0,751 \\
+Forêt, paramètres + C, N & catalogue (111\,769) & 0,933 & 0,96 & 0,91 & 0,972 \\
+CNN & catalogue (111\,992) & $0{,}933 \pm 0{,}012$ & 0,95 & 0,92 & 0,983 \\
+Forêt, paramètres + C, N & sismologie (5\,272) & 0,960 & 0,97 & 0,95 & 0,992 \\
+CNN & sismologie (5\,284) & $0{,}971 \pm 0{,}009$ & \textbf{0,99} & 0,96 & 0,992 \\
+CNN affiné & catalogue puis sismologie & $\mathbf{0{,}978 \pm 0{,}003}$ & \textbf{0,99} & \textbf{0,97} & \textbf{0,996} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Trois résultats ressortent (tableau~\ref{tab:apokasc}). D'abord, nos modèles marchaient déjà. Le CNN entraîné sur le catalogue passe d'un F1 de 0,68 contre le catalogue à 0,93 contre l'astérosismologie. Ses fausses alertes étaient en majorité de vraies étoiles du red clump. Il dépasse même le catalogue dont il apprend (0,675). Ensuite, de bonnes étiquettes valent plus que beaucoup d'étiquettes : 5\,284 étoiles d'astérosismologie portent le CNN à 0,971, avec vingt fois moins de données. Enfin, le spectre complet bat les cinq paramètres ASPCAP (0,971 contre 0,960). Le meilleur modèle part du CNN entraîné sur le catalogue, puis s'affine sur l'astérosismologie : F1 de 0,978, 99\,\% de rappel, 3\,\% de contamination, l'ordre de grandeur de Ting, Hawkins et Rix \cite{ting2018}.
+
+Deux réserves. Le test compte 844 étoiles : une erreur déplace le rappel de 0,3 point. Toutes les étoiles viennent du champ Kepler, surtout du disque mince. Le résultat reste à vérifier pour le bulbe et le halo.
+
 %=====================================================================
 \section{Discussion}
 
 \paragraph{Ce qui tient.} Trois résultats tiennent sur les trois versions : la séparation naines / géantes sans étiquette, la supériorité du CNN pour la classification, et l'effet opposé des mauvais spectres sur la classification et la régression.
 
-\paragraph{Ce qui plafonne.} Le CNN à quatre classes confond 42\,\% du red clump avec la RGB. La différence entre ces classes tient au cœur de l'étoile et laisse peu de traces dans le spectre de surface. Plus de données n'y change rien. Un classifieur dédié retrouve 87\,\% du red clump, mais sa précision plafonne à 0,57 avec tous les modèles testés (section~\ref{sec:rcrgb}). La limite vient des étiquettes du catalogue red clump.
+\paragraph{Ce qui plafonne.} Le CNN à quatre classes confond 42\,\% du red clump avec la RGB. La différence entre ces classes tient au cœur de l'étoile et laisse peu de traces dans le spectre de surface. Plus de données n'y change rien. Contre les étiquettes du catalogue, un classifieur dédié plafonne à 0,57 de précision. Contre l'astérosismologie, le même modèle atteint un F1 de 0,93, et 0,978 une fois affiné sur 5\,284 étoiles APOKASC-3 (section~\ref{sec:rcrgb}). La limite venait des étiquettes, pas du spectre.
 
 \paragraph{Ce qui ne tient pas.} L'ARI de 0,44 du GMM à $k = 4$ en version 2 ne se reproduit pas. Avec 246\,572 bons spectres, le GMM coupe les naines en deux plutôt que de séparer le red clump. Sur 10 graines, l'ARI à $k = 4$ ne dépasse pas 0,30. Le choix $k = 4$ reste fragile, et $k = 3$ reste le choix robuste.
 
@@ -516,13 +561,14 @@ Travaux futurs, par ordre de priorité :
   \item Entraîner la régression sur tous les spectres avec les étiquettes ASPCAP seulement.
   \item Entraîner le CNN de régression sur 50 époques ou plus.
   \item Répéter chaque entraînement avec 5 graines.
-  \item Entraîner le classifieur red clump / RGB sur des étiquettes d'astérosismologie (APOKASC-3, environ 15\,000 géantes).
+  \item Vérifier le classifieur red clump / RGB hors du champ Kepler, par exemple avec les étoiles TESS ou K2.
+  \item Réétiqueter les 137\,454 RGB avec le CNN affiné, puis réentraîner le CNN à quatre classes.
 \end{enumerate}
 
 %=====================================================================
 \section{Conclusion}
 
-Sur 370\,000 spectres APOGEE, le spectre seul sépare naines et géantes sans étiquette : un GMM à trois groupes atteint un ARI de 0,41 et place 73\,024 des 73\,040 naines dans un même groupe. Avec étiquettes, le CNN 1-D atteint un macro F1 de 0,857 et une erreur de 24,7\,K sur \teff{}. La régression gagne le plus à l'échantillon plus grand. Les tests de sensibilité justifient nos valeurs de référence, avec deux corrections : 10 composantes PCA pour la forêt au lieu de 50, et une part de mauvais spectres pour le CNN de classification. Ces réglages, choisis sur la validation, portent le macro F1 du CNN à 0,865 sur 3 graines. Un classifieur dédié porte le rappel du red clump de 58 à 87\,\%, mais sa précision plafonne à 0,57, limitée par les étiquettes du catalogue. Le bruit des étiquettes des mauvais spectres demeure.
+Sur 370\,000 spectres APOGEE, le spectre seul sépare naines et géantes sans étiquette : un GMM à trois groupes atteint un ARI de 0,41 et place 73\,024 des 73\,040 naines dans un même groupe. Avec étiquettes, le CNN 1-D atteint un macro F1 de 0,857 et une erreur de 24,7\,K sur \teff{}. La régression gagne le plus à l'échantillon plus grand. Les tests de sensibilité justifient nos valeurs de référence, avec deux corrections : 10 composantes PCA pour la forêt au lieu de 50, et une part de mauvais spectres pour le CNN de classification. Ces réglages, choisis sur la validation, portent le macro F1 du CNN à 0,865 sur 3 graines. La limite red clump / RGB venait des étiquettes : le catalogue red clump manque 45\,\% des vraies étoiles du red clump. Avec les étiquettes d'astérosismologie d'APOKASC-3, un CNN sépare red clump et RGB avec un F1 de 0,978 et 3\,\% de contamination. Le bruit des étiquettes des mauvais spectres demeure.
 
 \section*{Reproductibilité}
 \addcontentsline{toc}{section}{Reproductibilité}
@@ -548,6 +594,8 @@ python scripts/12_best.py
 python report/make_sensitivity_figures.py
 # classifieur red clump / RGB (environ 40 min)
 python scripts/13_rc_rgb.py
+# etiquettes APOKASC-3 (telechargees depuis VizieR, environ 45 min)
+python scripts/14_apokasc.py
 \end{lstlisting}
 
 \begin{thebibliography}{99}
@@ -562,6 +610,7 @@ python scripts/13_rc_rgb.py
 \bibitem{hdbscan} Campello, R. J. G. B., Moulavi, D. et Sander, J. (2013). Density-Based Clustering Based on Hierarchical Density Estimates. \textit{PAKDD}, LNCS 7819, 160--172.
 \bibitem{ari} Hubert, L. et Arabie, P. (1985). Comparing partitions. \textit{Journal of Classification}, 2, 193--218.
 \bibitem{ting2018} Ting, Y.-S., Hawkins, K. et Rix, H.-W. (2018). A Large and Pristine Sample of Standard Candles across the Milky Way: $\sim$100,000 Red Clump Stars with 3\% Contamination. \textit{ApJL}, 858, L7.
+\bibitem{pinsonneault2025} Pinsonneault, M. H. et al. (2025). APOKASC-3: The Third Joint Spectroscopic and Asteroseismic Catalog for Evolved Stars in the Kepler Fields. \textit{ApJS}, 276, 69.
 \end{thebibliography}
 
 \end{document}

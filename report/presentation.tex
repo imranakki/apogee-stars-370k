@@ -219,6 +219,27 @@ CNN, 3 graines & $0{,}683 \pm 0{,}004$ & 0,87 & 0,56 \\
 \end{itemize}
 \end{frame}
 
+\begin{frame}{Avec l'astérosismologie, le red clump se sépare}
+\centering
+\small
+\begin{tabular}{llrrr}
+\toprule
+844 géantes APOKASC-3 & Étiquettes & F1 red clump & Rappel & Précision \\
+\midrule
+Catalogue red clump & aucune & 0,675 & 0,53 & 0,92 \\
+CNN & catalogue & $0{,}933 \pm 0{,}012$ & 0,95 & 0,92 \\
+CNN & sismologie & $0{,}971 \pm 0{,}009$ & 0,99 & 0,96 \\
+CNN affiné & catalogue puis sismologie & $\mathbf{0{,}978 \pm 0{,}003}$ & \textbf{0,99} & \textbf{0,97} \\
+\bottomrule
+\end{tabular}\\[1em]
+\raggedright
+\begin{itemize}
+  \item Le catalogue red clump manque \alert{45\,\%} des vraies étoiles du red clump.
+  \item Le CNN marchait déjà : 0,68 contre le catalogue, 0,93 contre l'astérosismologie.
+  \item 5\,284 bonnes étiquettes battent 111\,992 étiquettes bruitées.
+\end{itemize}
+\end{frame}
+
 \begin{frame}{30\,000, 100\,000, 370\,000 étoiles}
 \centering
 \begin{tabular}{lrrr}
@@ -268,7 +289,7 @@ RTX 3060 portable (6 Go), 16 threads, 15 Go de RAM.
 \begin{enumerate}
   \item Régression sur tous les spectres, étiquettes ASPCAP seulement.
   \item CNN de régression sur 50 époques ou plus.
-  \item Red clump / RGB avec les étiquettes APOKASC-3.
+  \item Red clump / RGB hors du champ Kepler.
 \end{enumerate}
 \end{columns}
 \end{frame}
@@ -278,7 +299,7 @@ RTX 3060 portable (6 Go), 16 threads, 15 Go de RAM.
   \setlength{\itemsep}{1em}
   \item \textbf{Le spectre seul sépare naines et géantes, sans étiquettes} (GMM, ARI 0,41).
   \item \textbf{Avec étiquettes, le CNN atteint un macro F1 de 0,86 et 24,7\,K d'erreur sur \teff{}.}
-  \item \textbf{Plus de données améliore la régression. La limite red clump / RGB vient des étiquettes.}
+  \item \textbf{Avec les étiquettes d'astérosismologie, le CNN sépare red clump et RGB (F1 0,978).}
   \item \textbf{Les réglages choisis sur la validation portent le CNN à 0,865 et la forêt à 0,803.}
 \end{enumerate}
 \vspace{1.5em}
