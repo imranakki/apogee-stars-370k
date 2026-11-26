@@ -15,6 +15,7 @@ Nous classons 370 000 étoiles APOGEE DR17 à partir de leur seul spectre infrar
 |---|---|
 | Macro F1, CNN 1-D, 4 classes, meilleurs réglages (3 graines) | **0,865 ± 0,000** |
 | Erreur sur Teff, CNN entraîné sur les bons spectres | **24,7 K** |
+| Erreur sur Teff, CNN de régression sur 100 époques (3 graines) | **22,1 ± 0,4 K** |
 | ARI du GMM à 3 groupes, sans étiquettes | **0,41** |
 | Naines regroupées dans un même groupe du GMM | **73 024 sur 73 040** |
 | Red clump manqué par le catalogue red clump DR17 | **45 %** |
@@ -345,7 +346,7 @@ Chaque valeur du projet a une raison, listée dans [`docs/choix_parametres.md`](
 | PCA du clustering | 10 axes | 74,7 % de la variance, 77,0 % à 20 axes |
 | k | 3 | silhouette maximale |
 | CNN | noyau 7, 3 blocs | un noyau couvre une raie |
-| Époques | 30 | meilleure époque de validation gardée |
+| Époques | 30, 100 en régression (section 6.2) | meilleure époque de validation gardée |
 | Taux d'apprentissage | 0,001 | défaut d'Adam |
 | Forêt | 300 arbres, 50 axes | le gain s'arrête vers quelques centaines d'arbres |
 
@@ -359,7 +360,7 @@ Chaque valeur du projet a une raison, listée dans [`docs/choix_parametres.md`](
 ![Sensibilité hyperparamètres](report/figures/sens_hyper.png)
 *Figure 9. Courbes du CNN sur 50 époques, taux d'apprentissage, arbres et composantes de la forêt.*
 
-- **Époques.** En classification, la perte de validation atteint son minimum à l'époque 16, puis remonte. En régression, elle baisse encore à 50 : Teff vaut 25,0 K à l'époque 50 contre 35,3 K à 30.
+- **Époques.** En classification, la perte de validation atteint son minimum à l'époque 16, puis remonte. En régression, elle baisse encore à 50 : Teff vaut 25,0 K à l'époque 50 contre 35,3 K à 30. La section 6.2 prolonge la régression à 100 époques.
 - **Forêt.** 10 composantes donnent 0,803 de macro F1, contre 0,776 avec 50. Avec trop d'axes, chaque arbre tire surtout du bruit.
 
 ![Sensibilité clustering](report/figures/sens_cluster.png)
@@ -394,6 +395,38 @@ flowchart LR
 *Figure 11. Référence (gris) contre meilleurs réglages (bleu). Barres : écart type sur 3 graines.*
 
 Le gain le plus net porte sur les spectres de SNR < 70 : 0,738 contre 0,642 pour le CNN.
+
+### 6.2 CNN de régression sur 100 époques
+
+Le test `epochs` montrait une perte de validation encore en baisse à l'époque 50. `scripts/15_regress_long.py` reprend les meilleurs réglages de la régression (SNR ≥ 50, sans mauvais spectres, 177 097 étoiles) et entraîne le même CNN sur 100 époques, avec les graines 42, 43 et 44. Le modèle gardé reste celui de la meilleure époque de validation. Rien d'autre ne change : même architecture, même taux 0,001, pas de décroissance du taux.
+
+| Mesure | 30 époques (section 6.1) | 100 époques | Gain |
+|---|---:|---:|---:|
+| Teff, `test_good` (K) | 26,6 ± 1,0 | **22,1 ± 0,4** | −17 % |
+| log g, `test_good` (dex) | 0,055 ± 0,004 | **0,045 ± 0,002** | −18 % |
+| [M/H], `test_good` (dex) | 0,021 ± 0,003 | **0,017 ± 0,001** | −17 % |
+| Teff, `test_all` (K) | 85,4 ± 0,7 | **79,4 ± 1,2** | −7 % |
+| log g, `test_all` (dex) | 0,087 ± 0,004 | **0,076 ± 0,001** | −12 % |
+| Teff, SNR < 70 (K) | 283 ± 4 | **275 ± 7** | −3 % |
+
+*Erreurs absolues moyennes, moyenne ± écart type sur 3 graines.*
+
+![Régression sur 100 époques](report/figures/regress_long.png)
+*Figure 12. CNN de régression sur 100 époques. Trait fin : chaque époque. Trait épais : le modèle gardé si l'entraînement s'arrêtait à cette époque. Pointillé : 30 époques.*
+
+Dans ces mêmes runs, le modèle gardé à 30, 50 et 100 époques donne :
+
+| Arrêt | Teff (K) | log g (dex) | [M/H] (dex) |
+|---:|---:|---:|---:|
+| 30 | 29,4 ± 2,2 | 0,057 ± 0,004 | 0,020 ± 0,001 |
+| 50 | 24,6 ± 0,9 | 0,054 ± 0,003 | 0,019 ± 0,001 |
+| 100 | **22,1 ± 0,4** | **0,045 ± 0,002** | **0,017 ± 0,001** |
+
+- La meilleure époque de validation tombe à 94, 95 et 100. Le modèle n'a pas fini d'apprendre à 100 époques.
+- L'écart entre graines baisse de 1,0 K à 0,4 K sur Teff. Un entraînement plus long rend le résultat moins dépendant de la graine.
+- Le gain se concentre sur les bons spectres. Sur les spectres de SNR < 70, l'erreur reste dominée par le bruit et les étiquettes (section 5.4).
+- La perte de validation saute d'une époque à l'autre, jusqu'à un facteur 2. Avec un taux constant, l'époque gardée dépend de ce bruit. Une décroissance du taux réduirait ces sauts.
+- Coût : 28 s par époque, 47 min par graine, 2 h 22 pour les 3 graines.
 
 ---
 
@@ -476,20 +509,20 @@ Limites :
 
 - Les étiquettes viennent d'ASPCAP. Le CNN apprend à reproduire ASPCAP.
 - Hors des sections 6.1 et 7, chaque CNN s'entraîne avec une seule graine.
-- Le CNN de régression s'arrête à 30 époques, alors que sa perte de validation baisse encore à 50.
+- Le CNN de régression sur 100 époques a sa meilleure époque entre 94 et 100 : il n'a pas convergé.
 - La PCA s'ajuste sur 50 000 spectres et HDBSCAN tourne sur 50 000 étoiles.
 
 Travaux futurs, par priorité :
 
 1. Entraîner la régression sur tous les spectres avec les étiquettes ASPCAP seulement.
-2. Entraîner le CNN de régression sur 50 époques ou plus.
+2. Entraîner le CNN de régression au-delà de 100 époques, avec une décroissance du taux d'apprentissage.
 3. Répéter chaque entraînement avec 5 graines.
 4. Vérifier le classifieur red clump / RGB hors du champ Kepler, avec TESS ou K2.
 5. Réétiqueter les 137 454 RGB avec le CNN affiné, puis réentraîner le CNN à quatre classes.
 
 ## 10. Conclusion
 
-Sur 370 000 spectres APOGEE, le spectre seul sépare naines et géantes sans étiquette : un GMM à trois groupes atteint un ARI de 0,41 et place 73 024 des 73 040 naines dans un même groupe. Avec étiquettes, le CNN 1-D atteint un macro F1 de 0,865 sur 3 graines et une erreur de 24,7 K sur Teff. Le CNN entraîné sur 2 % des bons spectres dépasse déjà la forêt entraînée sur 100 %. La limite red clump / RGB venait des étiquettes : avec APOKASC-3, un CNN sépare les deux classes avec un F1 de 0,978 et 3 % de contamination.
+Sur 370 000 spectres APOGEE, le spectre seul sépare naines et géantes sans étiquette : un GMM à trois groupes atteint un ARI de 0,41 et place 73 024 des 73 040 naines dans un même groupe. Avec étiquettes, le CNN 1-D atteint un macro F1 de 0,865 sur 3 graines. Entraîné sur 100 époques, le CNN de régression atteint 22,1 ± 0,4 K sur Teff. Le CNN entraîné sur 2 % des bons spectres dépasse déjà la forêt entraînée sur 100 %. La limite red clump / RGB venait des étiquettes : avec APOKASC-3, un CNN sépare les deux classes avec un F1 de 0,978 et 3 % de contamination.
 
 ---
 
@@ -521,6 +554,7 @@ python scripts/11_sensitivity.py cluster_dims cluster_k rf_trees rf_pca size epo
 python scripts/12_best.py                # meilleurs réglages, 3 graines, environ 4 h
 python scripts/13_rc_rgb.py              # classifieur red clump / RGB, environ 40 min
 python scripts/14_apokasc.py             # étiquettes APOKASC-3 depuis VizieR, environ 45 min
+python scripts/15_regress_long.py        # CNN de régression sur 100 époques, 3 graines, environ 2 h 30
 python report/make_figures.py
 python report/make_sensitivity_figures.py
 ```
@@ -533,7 +567,7 @@ Toute l'expérience qualité d'un coup : `bash scripts/run_quality_experiment.sh
 stars/      code partagé : configuration, catalogue, spectres, modèles, entraînement, figures
 scripts/    une étape du pipeline par script, numérotés dans l'ordre d'exécution
 docs/       explication de chaque script et des choix de données (commencez par 00_vue_ensemble.md)
-results/    tableaux de résultats, tests de sensibilité, red clump / RGB, APOKASC-3
+results/    tableaux de résultats, tests de sensibilité, red clump / RGB, APOKASC-3, régression sur 100 époques
 report/     rapport LaTeX, présentation beamer, figures, vue 3D des groupes
 ```
 

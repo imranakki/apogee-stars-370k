@@ -179,4 +179,4 @@ Un écart de 0,01 entre deux runs uniques ne prouve rien. La forêt, à graine f
 
 En classification, les meilleurs réglages gagnent 0,013 de macro F1 pour le CNN et 0,027 pour la forêt. Le plus grand gain porte sur les spectres bruités : 0,738 contre 0,642 pour le CNN. En régression, l'erreur sur Teff ne bouge pas, et l'écart reste dans le bruit des graines. log g gagne 10 % avec le CNN et 20 % avec la forêt.
 
-Prochaine étape : entraîner le CNN de régression sur 50 époques ou plus.
+Suite : `scripts/15_regress_long.py` entraîne le CNN de régression sur 100 époques avec les meilleurs réglages et 3 graines. L'erreur sur Teff passe de 26,6 ± 1,0 K (30 époques) à 22,1 ± 0,4 K, log g de 0,055 à 0,045 dex, [M/H] de 0,021 à 0,017 dex. La meilleure époque tombe entre 94 et 100. Détails dans la section 6.2 du README.

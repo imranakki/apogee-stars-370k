@@ -167,7 +167,7 @@ Pour classer, oui : 70 donne le meilleur macro F1 (0,866). À 150, l'entraîneme
 Avec 2\,\% des bons spectres (3\,450), le CNN atteint 0,785 de macro F1, plus que la forêt sur 100\,\% (0,776). L'erreur sur \teff{} descend de 54 à 27\,K entre 2 et 50\,\%, puis ne bouge plus.
 
 \Q{30 époques suffisent-elles ?}
-Pour classer, oui : la perte de validation est minimale à l'époque 16, puis remonte (surapprentissage). Garder la meilleure époque corrige l'effet. Pour la régression, non : la perte baisse encore à l'époque 50, où l'erreur sur \teff{} vaut 25,0\,K contre 35,3\,K à l'époque 30.
+Pour classer, oui : la perte de validation est minimale à l'époque 16, puis remonte (surapprentissage). Garder la meilleure époque corrige l'effet. Pour la régression, non : la perte baisse encore à l'époque 50, où l'erreur sur \teff{} vaut 25,0\,K contre 35,3\,K à l'époque 30. Sur 100 époques et 3 graines, l'erreur tombe à $22{,}1 \pm 0{,}4$\,K, contre $26{,}6 \pm 1{,}0$\,K à 30 époques. La meilleure époque tombe entre 94 et 100.
 
 \Q{Pourquoi 10 composantes PCA pour la forêt et pas 50 ?}
 Le test le montre : 10 composantes donnent 0,803 de macro F1, contre 0,776 à 50 et 0,737 à 100. Avec trop d'axes, chaque arbre tire surtout des axes de bruit. Notre choix de départ (50) était sous-optimal.
@@ -188,13 +188,13 @@ Non. Le 0,848 vient d'un seul run (graine 42). Le 0,852 est la moyenne de 3 grai
 \section{Limites et suite}
 
 \Q{Quelles sont les principales limites ?}
-Étiquettes ASPCAP, avec leurs propres erreurs. Une seule graine hors de la comparaison finale. CNN de régression arrêté à 30 époques. PCA et HDBSCAN sur 50\,000 étoiles. 85 étoiles demandées manquent.
+Étiquettes ASPCAP, avec leurs propres erreurs. Une seule graine hors de la comparaison finale. CNN de régression pas encore convergé à 100 époques. PCA et HDBSCAN sur 50\,000 étoiles. 85 étoiles demandées manquent.
 
 \Q{Que feriez-vous avec plus de temps ?}
 Par ordre de priorité :
 \begin{enumerate}[nosep]
   \item Régression sur tous les spectres, avec les étiquettes ASPCAP seulement.
-  \item CNN de régression sur 50 époques ou plus.
+  \item CNN de régression au-delà de 100 époques, avec un taux décroissant.
   \item Chaque entraînement répété avec 5 graines.
   \item Séparation red clump / RGB validée par astérosismologie.
 \end{enumerate}

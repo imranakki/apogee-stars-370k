@@ -22,6 +22,7 @@ Un algorithme regroupe-t-il des étoiles en classes physiques à partir de leur 
 | `12_best.py` | meilleurs réglages sur la validation, 3 graines par CNN | `best/selection.json`, `best/final.csv` | [choix des paramètres](choix_parametres.md) |
 | `13_rc_rgb.py` | classifieur binaire red clump / RGB, 4 modèles | `rc_rgb/results.csv` | rapport, section red clump / RGB |
 | `14_apokasc.py` | red clump / RGB jugé et entraîné sur APOKASC-3 | `apokasc3/results.csv`, `apokasc3/crosstab.csv` | rapport, section red clump / RGB |
+| `15_regress_long.py` | CNN de régression sur 100 époques, 3 graines | `regress_long/curve_*.csv`, `regress_long/final.csv` | [choix des paramètres](choix_parametres.md) |
 | `run_quality_experiment.sh` | lance l'expérience qualité complète | tous les runs | [qualité](experience_qualite.md) |
 
 Les définitions de qualité, d'étiquettes et de split sont dans [donnees.md](donnees.md). Le code partagé est décrit dans [package_stars.md](package_stars.md). Les choix qui font tenir 370 000 spectres dans 15 Go de RAM sont dans [memoire.md](memoire.md).

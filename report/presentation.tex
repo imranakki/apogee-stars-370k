@@ -199,6 +199,17 @@ Choix sur la validation, test utilisé une seule fois.
 \end{itemize}
 \end{frame}
 
+\begin{frame}{Régression : 100 époques au lieu de 30}
+\centering
+\includegraphics[width=\linewidth]{regress_long.png}\\[0.5em]
+\raggedright\small
+Mêmes réglages, 3 graines, meilleure époque de validation gardée.
+\begin{itemize}
+  \item \teff{} : $26{,}6 \pm 1{,}0 \rightarrow 22{,}1 \pm 0{,}4$\,K. $\log g$ : $0{,}055 \rightarrow 0{,}045$. [M/H] : $0{,}021 \rightarrow 0{,}017$.
+  \item Meilleure époque entre 94 et 100 : le modèle apprend encore.
+\end{itemize}
+\end{frame}
+
 \begin{frame}{Un classifieur dédié red clump / RGB}
 \centering
 \small
@@ -264,6 +275,7 @@ Le CNN sur 2\,\% bat la forêt sur 100\,\%. \teff{} plafonne à partir de 50\,\%
 \midrule
 Téléchargement de 270\,312 spectres & environ 6\,h (une fois) \\
 CNN, 30 époques & 14 à 20 min \\
+CNN de régression, 100 époques & 47 min par graine \\
 Forêt aléatoire & 1,5 à 8 min \\
 Clustering & 2 à 3 min \\
 \midrule
@@ -286,7 +298,7 @@ RTX 3060 portable (6 Go), 16 threads, 15 Go de RAM.
 \textbf{Suite}
 \begin{enumerate}
   \item Régression sur tous les spectres, étiquettes ASPCAP seulement.
-  \item CNN de régression sur 50 époques ou plus.
+  \item Régression au-delà de 100 époques, taux décroissant.
   \item Red clump / RGB hors du champ Kepler.
 \end{enumerate}
 \end{columns}
@@ -296,7 +308,7 @@ RTX 3060 portable (6 Go), 16 threads, 15 Go de RAM.
 \begin{enumerate}
   \setlength{\itemsep}{1em}
   \item \textbf{Le spectre seul sépare naines et géantes, sans étiquettes} (GMM, ARI 0,41).
-  \item \textbf{Avec étiquettes, le CNN atteint un macro F1 de 0,86 et 24,7\,K d'erreur sur \teff{}.}
+  \item \textbf{Avec étiquettes, le CNN atteint un macro F1 de 0,86. Sur 100 époques, il mesure \teff{} à 22\,K près.}
   \item \textbf{Avec les étiquettes d'astérosismologie, le CNN sépare red clump et RGB (F1 0,978).}
   \item \textbf{Les réglages choisis sur la validation portent le CNN à 0,865 et la forêt à 0,803.}
 \end{enumerate}
